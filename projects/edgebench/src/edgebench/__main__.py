@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import json
+import platform
 import sys
 
 from . import benchmark
@@ -17,7 +18,12 @@ def main(argv=None):
     try:
         report = benchmark(lambda: hashlib.sha256(payload).digest(),
                            workload="synthetic SHA-256 of 1 MiB; not model inference",
-                           warmups=args.warmups, repeats=args.repeats)
+                           warmups=args.warmups, repeats=args.repeats,
+                           configuration={"runtime": "Python/hashlib",
+                                          "runtime_version": platform.python_version(),
+                                          "device": "cpu", "dtype": "bytes",
+                                          "input_shape": [len(payload)],
+                                          "protocol": "SHA-256; fixed x bytes; payload allocated before timing"})
     except ValueError as exc:
         print(f"edgebench: {exc}", file=sys.stderr)
         return 2
