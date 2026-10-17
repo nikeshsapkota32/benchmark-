@@ -17,7 +17,11 @@ class Result:
 def number(value, label):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{label} must be a finite number")
-    if not math.isfinite(value):
+    try:
+        finite = math.isfinite(value)
+    except OverflowError:
+        raise ValueError(f"{label} must fit within the finite float range") from None
+    if not finite:
         raise ValueError(f"{label} must be a finite number")
     return value
 

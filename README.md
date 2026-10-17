@@ -70,6 +70,8 @@ Sample counts and metric direction must match for each task/metric pair.
 Missing baseline metrics fail; added metrics are reported but are not gated.
 Empty runs, duplicate results, duplicate JSON keys, nonfinite scores and invalid
 counts are errors. Output order is deterministic.
+Scores and tolerances must fit within Python's finite floating-point range;
+out-of-range JSON integers are input errors as well.
 
 | Exit code | Meaning |
 | --- | --- |
