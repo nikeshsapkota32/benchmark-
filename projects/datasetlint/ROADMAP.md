@@ -5,7 +5,9 @@
   record at a time with deterministic file/line locations and strict errors.
 - Implemented: explicit top-level ID/text field selection for JSON and JSONL,
   with mapping metadata and unchanged default reports.
-- Next: opt-in normalization policies with explicit report metadata.
+- Implemented: opt-in `ascii-whitespace-v1` text matching with explicit policy
+  metadata. IDs and source hashes stay exact; default reports remain unchanged.
+- Any broader normalization needs a separately versioned, reviewed policy.
 - Consider disk-backed duplicate indexes and finding output for large datasets;
   the JSONL reader alone does not provide bounded-memory duplicate detection.
 - Implemented: SHA-256 hashes of the exact JSONL bytes consumed during validation.
