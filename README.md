@@ -106,6 +106,34 @@ both fingerprints are null. IDs do not bypass protocol, revision or score checks
 | 1 | Regression, missing metric or incompatible result |
 | 2 | Malformed input, incompatible run metadata or file error |
 
+## Markdown review reports
+
+```sh
+benchguard examples/baseline.json examples/candidate.json --format markdown --tolerance 0.01
+```
+
+`--format markdown` prints a review-friendly report to standard output, with
+the overall outcome, run metadata, metric values/statuses/reasons and an input
+audit table. JSON remains the default; its report shape is unchanged. Both
+formats use the same comparison rules and exit codes, so a Markdown report can
+still accompany a failing CI step. Invalid inputs return exit 2 without printing
+a partial report.
+
+The audit table contains SHA-256 hashes of the exact baseline and candidate file
+bytes, plus the metric-tolerance file when supplied. Each file is read once for
+both parsing and hashing. Formatting or newline changes therefore change its
+hash even if parsed data is equivalent. The report also records the global
+tolerance; effective per-metric limits appear in comparable rows' reasons.
+Hashes identify inputs but cannot verify their provenance or model quality.
+
+Input text is escaped inside table cells so Markdown/HTML, pipes and newlines
+cannot introduce extra report structure. Reports are deterministic for the same
+inputs and options and include no timestamps or input paths. They do include
+model names, dataset/protocol metadata and scores, so review them before sharing.
+Raw sample IDs are not included. When redirecting output to a file, choose a new
+report path distinct from all inputs: shell redirection can truncate a file
+before BenchGuard starts.
+
 ## What this does not prove
 
 This is a deterministic regression gate, not a statistical significance test.

@@ -9,7 +9,8 @@
 ## More useful CI reports
 - Per-metric absolute tolerances: implemented via `--metric-tolerances`.
 - Explicit direction policies separate from run metadata.
-- Markdown report with an audit trail of source file hashes.
+- Markdown report: implemented via `--format markdown`, with exact-byte input
+  SHA-256 hashes, comparison outcomes and escaped run/metric metadata.
 - Sample-ID fingerprints: implemented for optional per-result `sample_ids`,
   detecting changes hidden by equal sample counts. Content verification remains
   outside the scope of this identity check.
