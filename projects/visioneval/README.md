@@ -23,7 +23,7 @@ counts whole correct strings. Character error rate is summed Levenshtein edit
 distance divided by summed target digits, accounting for insertions, deletions
 and substitutions. This rate can exceed 1; it is not a positionwise accuracy.
 Empty predictions count as missing. Non-ASCII numeral scripts and free-form
-model explanations need an explicit future extraction policy.
+model explanations are not supported.
 
 For arithmetic, each record also has two integer `operands` and `operator` of
 `+`, `-` or `*`. Target must equal the computed result; inconsistent labels are
@@ -31,6 +31,43 @@ input errors. Prediction must be an integer or null. Booleans are rejected.
 Exact-match accuracy reports correct answers against the validated targets.
 No expression strings are executed. It does not assess reasoning steps or
 separate recognition errors from arithmetic errors.
+
+## Opt in to whole-response numeric text
+
+The default `strict` policy retains the types and exact matching above. For
+saved model responses consisting only of a numeric answer, explicitly select:
+
+```sh
+visioneval examples/numeric-responses.json --response-policy numeric-text-v1 --details
+```
+
+The Python equivalent is `evaluate(data, response_policy="numeric-text-v1")`.
+In this mode every prediction must be a string or null, including arithmetic
+answers. Only leading/trailing ASCII whitespace (space, tab, CR, LF, vertical tab
+and form feed) is removed. Null or a blank response counts as missing and remains
+in the denominator. Targets are never normalized; arithmetic labels still must
+agree with their operands/operator.
+
+Digit responses must contain only ASCII digits after trimming: `" 007\n"`
+becomes `"007"`, not `"7"`. Arithmetic responses allow one optional ASCII `+`
+or `-` followed by digits: `" +003 "` becomes integer 3 and `"-0"` becomes 0.
+Arithmetic response strings are limited to 1000 digits before integer conversion.
+This is whole-response parsing, not a search for a plausible answer. Explanations,
+multiple answers, expressions, decimal/scientific notation, grouping separators,
+Markdown fences, Unicode digits and Unicode whitespace are rejected.
+
+A rejected response aborts the entire evaluation with exit 2 and no partial
+report; the error identifies its zero-based record index without echoing its
+content. It is not silently counted as missing or scored as wrong. This policy
+therefore requires a numeric-output protocol, not arbitrary free-form VLM output.
+Do not drop rejected records to obtain a score: that would change the evaluation
+set. Keep the original responses and choose/document an appropriate protocol.
+
+Opt-in reports include `"response_policy": "numeric-text-v1"`; default strict
+reports are unchanged. Compare runs only with the same response policy and pin
+it in the caller-supplied `protocol` as well. This versioned policy is distinct
+from model accuracy. The bundled response example is synthetic, not inference
+output, and scores one correct answer and one missing answer out of two.
 
 ## Inspect per-example outcomes
 

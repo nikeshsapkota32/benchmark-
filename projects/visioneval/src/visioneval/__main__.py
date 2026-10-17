@@ -20,10 +20,13 @@ def main(argv=None):
     parser.add_argument("predictions", type=Path)
     parser.add_argument("--details", action="store_true",
                         help="include per-record indices and outcomes, without raw answers or IDs")
+    parser.add_argument("--response-policy", choices=("strict", "numeric-text-v1"), default="strict",
+                        help="explicit prediction parsing policy (default: strict)")
     args = parser.parse_args(argv)
     try:
         report = evaluate(json.loads(args.predictions.read_text(encoding="utf-8"),
-                                     object_pairs_hook=unique_object), include_details=args.details)
+                                     object_pairs_hook=unique_object), include_details=args.details,
+                          response_policy=args.response_policy)
     except (OSError, ValueError) as exc:
         print(f"visioneval: {exc}", file=sys.stderr)
         return 2
