@@ -1,11 +1,10 @@
 """Measure a synchronous callable on the current host."""
 
-import math
 import platform
-import statistics
 import time
 
 from .configuration import snapshot
+from .report import summarize, validate_report
 
 
 def benchmark(operation, *, workload, warmups=3, repeats=10, synchronize=None,
@@ -32,14 +31,10 @@ def benchmark(operation, *, workload, warmups=3, repeats=10, synchronize=None,
         if duration < 0:
             raise ValueError("monotonic clock moved backwards")
         durations.append(duration / 1_000_000)
-    ordered = sorted(durations)
     return {"schema_version": 1, "workload": workload, "warmups": warmups, "repeats": repeats,
             "configuration": recorded_configuration,
             "environment": {"system": platform.system(), "release": platform.release(),
                             "machine": platform.machine(), "python": platform.python_version()},
             "unit": "ms", "percentile_method": "nearest_rank",
             "durations": durations,
-            "summary": {"min": ordered[0], "max": ordered[-1],
-                        "mean": statistics.mean(durations), "median": statistics.median(durations),
-                        "p90": ordered[math.ceil(0.90 * repeats) - 1],
-                        "p95": ordered[math.ceil(0.95 * repeats) - 1]}}
+            "summary": summarize(durations)}
