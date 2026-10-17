@@ -9,10 +9,10 @@ without changing their code. No PyPI packages have been published.
 | Project | Working first version | Next milestone |
 | --- | --- | --- |
 | DatasetLint | JSON/JSONL duplicate checks, field mapping, file/line diagnostics and JSONL source hashes | Opt-in normalization and disk-backed indexes |
-| EdgeBench | Callable timings, configuration snapshots and offline saved-report validation | Configuration compatibility and hardware runs |
+| EdgeBench | Callable timings, saved-report validation and strict metadata compatibility checks | Controlled-variable policies and hardware runs |
 | VisionEval | Saved digit/arithmetic scoring, optional outcomes and explicit whole-response numeric parsing | Reviewed format adapters and pinned-protocol exports |
 
-2026-10-17: local standard-library suites passed: DatasetLint 25, EdgeBench 20,
+2026-10-17: local standard-library suites passed: DatasetLint 25, EdgeBench 27,
 VisionEval 19. Fixtures are synthetic. EdgeBench's smoke test executes a SHA-256
 workload on the current host; no model inference or Raspberry Pi run was made.
 See each package's README, ROADMAP and MIT LICENSE. Work developed with AI

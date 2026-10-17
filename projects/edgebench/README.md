@@ -108,7 +108,42 @@ statistical reliability, configuration compatibility or model correctness. A
 fabricated but self-consistent report can pass. Keep original measurements and
 protocol records; this command cannot prove that any benchmark actually ran.
 
-Exit codes: 0 demo completed or saved report validated, 2 invalid settings/report
+## Check whether measurement settings match
+
+```sh
+edgebench --check-compatible baseline.json candidate.json --require-field model_revision --require-field input_revision
+```
+
+The Python API is `check_compatibility(baseline, candidate, required_fields=())`,
+imported from `edgebench`. Both reports must first pass saved-report validation.
+The versioned `strict-metadata-v1` policy requires exact matches for workload,
+warm-up/repeat counts, OS/release, architecture and Python version. Empty or
+whitespace-only environment strings count as missing information.
+
+Configuration `protocol` is always required in both reports. Repeat
+`--require-field NAME` to require additional supported configuration fields;
+the API accepts a list or tuple. Unknown names are errors. Every configuration
+field present in either report must be present and equal in the other, whether
+explicitly required or not. Fields omitted by both reports are unspecified;
+require the fields relevant to your experiment. Legacy reports without
+configuration therefore validate individually but fail this compatibility check.
+
+The JSON result contains `compatible`, the policy name, sorted `required_fields`
+and a deterministic `differences` list. Each difference names its field and gives
+`different`, `missing_in_baseline`, `missing_in_candidate` or `missing_in_both`.
+It does not copy the recorded values. Durations may differ: this checks metadata,
+not performance regressions or statistical significance. Unknown extension fields
+outside configuration are ignored, consistent with schema-v1 validation.
+
+Exit 0 means these metadata checks passed, 1 means incompatible metadata, and 2
+means malformed input, invalid options or a file error. No workload executes.
+Malformed reports produce no partial result. Matching metadata does not establish
+identical physical hardware, power/thermal conditions, accurate caller settings,
+or a fair experiment. This strict policy intentionally flags changes to model,
+runtime or hardware settings; comparisons that intentionally vary them need a
+separately specified experimental policy.
+
+Exit codes for other modes: 0 demo completed or saved report validated, 2 invalid settings/report
 or file error. No memory, energy,
 throughput, model-quality or full hardware-identification claims are made.
 MIT licensed. Developed with AI assistance.
