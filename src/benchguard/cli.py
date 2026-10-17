@@ -36,19 +36,27 @@ def main(argv=None):
                         help="allowed degradation in absolute metric units")
     parser.add_argument("--metric-tolerances", metavar="PATH",
                         help="JSON object mapping baseline metric names to absolute tolerances")
+    parser.add_argument("--metric-directions", metavar="PATH",
+                        help="JSON object mapping baseline metric names to required higher_is_better booleans")
     parser.add_argument("--format", choices=("json", "markdown"), default="json",
                         help="output format (default: json)")
     args = parser.parse_args(argv)
     try:
         source_hashes = {}
         overrides = {}
+        directions = {}
+        if args.metric_directions:
+            directions, source_hashes["metric directions"] = _load_with_digest(args.metric_directions)
+        if not isinstance(directions, dict):
+            raise ValueError("metric directions file must contain a JSON object")
         if args.metric_tolerances:
             overrides, source_hashes["metric tolerances"] = _load_with_digest(args.metric_tolerances)
         if not isinstance(overrides, dict):
             raise ValueError("metric tolerances file must contain a JSON object")
         baseline, source_hashes["baseline"] = _load_with_digest(args.baseline)
         candidate, source_hashes["candidate"] = _load_with_digest(args.candidate)
-        rows = compare(baseline, candidate, args.tolerance, metric_tolerances=overrides)
+        rows = compare(baseline, candidate, args.tolerance, metric_tolerances=overrides,
+                       metric_directions=directions)
     except (ValueError, OSError, UnicodeError) as exc:
         print(f"benchguard: {exc}", file=sys.stderr)
         return 2
