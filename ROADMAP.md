@@ -7,7 +7,8 @@
 - Add a LightEval adapter after validating current result schemas.
 
 ## More useful CI reports
-- Per-metric absolute tolerances and explicit direction policies.
+- Per-metric absolute tolerances: implemented via `--metric-tolerances`.
+- Explicit direction policies separate from run metadata.
 - Markdown report with an audit trail of source file hashes.
 - Sample-ID fingerprints to detect changes hidden by equal sample counts.
 - Paired sample-level comparisons with seeded bootstrap intervals. Do not infer
