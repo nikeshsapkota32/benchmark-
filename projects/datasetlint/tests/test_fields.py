@@ -39,6 +39,7 @@ class FieldMappingTests(unittest.TestCase):
             paths[split] = self.root / (split + ".jsonl")
             paths[split].write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
         report = inspect_jsonl(paths, **self.options)
+        self.assertEqual(set(report.pop("source_sha256")), set(paths))
         expected = inspect(self.data, **self.options)
         for finding in report["findings"]:
             self.assertEqual(finding.pop("path"), str(paths[finding["split"]]))

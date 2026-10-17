@@ -1,6 +1,7 @@
 """Read strict UTF-8 JSONL without materializing all input records."""
 
 from contextlib import ExitStack
+import hashlib
 import json
 from pathlib import Path
 
@@ -20,8 +21,10 @@ def _reject_constant(value):
     raise ValueError("nonfinite JSON number")
 
 
-def _records(stream, path):
+def _records(stream, path, digest=None):
     for line_number, raw in enumerate(stream, 1):
+        if digest is not None:
+            digest.update(raw)
         try:
             line = raw.decode("utf-8")
             if not line.strip():
@@ -45,7 +48,10 @@ def inspect_jsonl(splits, *, id_field="id", text_field="text"):
     except TypeError:
         raise ValueError("split paths must be strings or path-like objects") from None
     with ExitStack() as stack:
-        streams = {name: _records(stack.enter_context(paths[name].open("rb")), str(paths[name]))
+        digests = {name: hashlib.sha256() for name in sorted(paths)}
+        streams = {name: _records(stack.enter_context(paths[name].open("rb")), str(paths[name]), digests[name])
                    for name in sorted(paths)}
-        return _inspect(streams, sources={name: str(path) for name, path in paths.items()},
-                        id_field=id_field, text_field=text_field)
+        report = _inspect(streams, sources={name: str(path) for name, path in paths.items()},
+                          id_field=id_field, text_field=text_field)
+        report["source_sha256"] = {name: digest.hexdigest() for name, digest in digests.items()}
+        return report
