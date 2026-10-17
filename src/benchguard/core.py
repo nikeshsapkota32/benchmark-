@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass
+from fractions import Fraction
 
 from .samples import sample_fingerprint
 
@@ -63,6 +64,26 @@ def validate(run):
     return indexed
 
 
+def _regressed(before, after, higher_is_better, limit):
+    direction = 1 if higher_is_better else -1
+    degradation = (before - after) * direction
+    try:
+        if math.isfinite(degradation):
+            return degradation > limit and not math.isclose(
+                degradation, limit, rel_tol=1e-12, abs_tol=1e-15
+            )
+    except OverflowError:
+        pass  # A difference of valid integers may not fit in a float.
+
+    # Recompute from the original finite inputs, not an overflowed float.
+    # Use the same closeness rule without converting the difference to float.
+    degradation = (Fraction(before) - Fraction(after)) * direction
+    limit = Fraction(limit)
+    margin = max(Fraction(1e-12) * max(abs(degradation), abs(limit)),
+                 Fraction(1e-15))
+    return degradation > limit and abs(degradation - limit) > margin
+
+
 def compare(baseline, candidate, tolerance=0.0, *, metric_tolerances=None):
     """Compare in native metric units; this is not a significance test.
 
@@ -109,10 +130,7 @@ def compare(baseline, candidate, tolerance=0.0, *, metric_tolerances=None):
             status, reason = "incompatible", "metric direction differs"
         else:
             limit = overrides.get(metric, tolerance)
-            degradation = (a["value"] - b["value"]) * (1 if a["higher_is_better"] else -1)
-            regressed = degradation > limit and not math.isclose(
-                degradation, limit, rel_tol=1e-12, abs_tol=1e-15
-            )
+            regressed = _regressed(a["value"], b["value"], a["higher_is_better"], limit)
             status = "regression" if regressed else "pass"
             reason = f"allowed absolute degradation: {limit:g}"
         rows.append(Result(task, metric, a["value"] if a else None,
