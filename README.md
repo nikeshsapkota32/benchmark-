@@ -72,6 +72,8 @@ Empty runs, duplicate results, duplicate JSON keys, nonfinite scores and invalid
 counts are errors. Output order is deterministic.
 Scores and tolerances must fit within Python's finite floating-point range;
 out-of-range JSON integers are input errors as well.
+Finite scores remain comparable even when their difference exceeds that range;
+the comparison preserves the tolerance boundary instead of overflowing.
 
 ### Check that runs evaluated the same samples
 
