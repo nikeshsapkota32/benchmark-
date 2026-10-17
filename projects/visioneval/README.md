@@ -32,6 +32,28 @@ Exact-match accuracy reports correct answers against the validated targets.
 No expression strings are executed. It does not assess reasoning steps or
 separate recognition errors from arithmetic errors.
 
+## Inspect per-example outcomes
+
+```sh
+visioneval examples/digits.json --details
+```
+
+The Python equivalent is `evaluate(data, include_details=True)`. Default reports
+remain aggregate-only. With the option enabled, a `details` list follows input
+record order. Each entry has a zero-based `index` into the original `records`
+array and a `status`: `correct`, `incorrect` or `missing`. For digits, it also
+includes `digit_edit_errors` and `target_digits`. Those counts sum to the report's
+aggregate counts. Missing digit predictions (null or empty) count as deleting
+every target digit. Arithmetic details contain only index and status; integer
+zero is a valid prediction, not a missing value.
+
+Details omit record IDs, targets, predictions, operands, image paths and extra
+record fields. Use the index to inspect the original file locally. Indices are
+only meaningful for that file's ordering and must not be used to pair reordered
+runs. Reports still include caller-supplied model/dataset/protocol metadata,
+lengths and outcomes; this is not anonymization. Review reports before sharing.
+All records must validate before any output is printed, even in details mode.
+
 The JSON report retains run metadata and aggregate counts/scores. Exit 0 means
 scoring completed, even for poor scores; exit 2 means invalid input/file error.
 No pass/fail quality threshold or significance test is implied. The metadata is
