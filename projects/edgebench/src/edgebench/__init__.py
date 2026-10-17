@@ -4,6 +4,7 @@ import platform
 import time
 
 from .configuration import snapshot
+from .compatibility import check_compatibility
 from .report import summarize, validate_report
 
 
