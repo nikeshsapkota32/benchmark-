@@ -30,6 +30,29 @@ the same split is `duplicate_id`/`duplicate_text`, otherwise it is
 `overlap_id`/`overlap_text`. It reports repeated occurrences, not every pair.
 Split names remain visible in reports.
 
+## Explicit field names
+
+For exports using other keys, select the ID and text fields without rewriting
+the records. Both JSON and JSONL modes accept the same options:
+
+```sh
+datasetlint exported.json --id-field sample_id --text-field prompt
+datasetlint --split train=exported.jsonl --id-field sample_id --text-field prompt
+```
+
+The Python APIs `inspect(dataset, id_field="sample_id", text_field="prompt")`
+and `inspect_jsonl(splits, id_field="sample_id", text_field="prompt")` use the
+same mapping. Field names must be distinct, nonblank strings and are literal
+top-level keys: dots do not select nested properties. Names and values are not
+trimmed or normalized. Missing configured keys are errors; there is no automatic
+fallback to `id`/`text`. Selected values must still be nonblank strings.
+
+For a nondefault mapping, reports include
+`"fields": {"id": "sample_id", "text": "prompt"}`. Finding codes continue to
+describe the semantic role (`duplicate_id`, `overlap_text`, etc.), not the source
+key. Default `id`/`text` reports are unchanged. Field names, but not record
+values, are included in reports and validation diagnostics.
+
 ## JSONL files
 
 For separate split files, use one JSON object per UTF-8 line with the same `id`
