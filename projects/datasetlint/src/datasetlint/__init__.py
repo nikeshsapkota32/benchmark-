@@ -1,8 +1,15 @@
 """Offline checks for exact duplicate text and reused example IDs."""
 
+import re
 
-def inspect(dataset, *, id_field="id", text_field="text"):
+
+TEXT_POLICIES = ("exact", "ascii-whitespace-v1")
+_ASCII_WHITESPACE = re.compile(r"[ \t\r\n\v\f]+")
+
+
+def inspect(dataset, *, id_field="id", text_field="text", text_policy="exact"):
     _validate_fields(id_field, text_field)
+    _validate_text_policy(text_policy)
     if not isinstance(dataset, dict) or type(dataset.get("schema_version")) is not int or dataset["schema_version"] != 1:
         raise ValueError("schema_version must be integer 1")
     splits = dataset.get("splits")
@@ -10,7 +17,12 @@ def inspect(dataset, *, id_field="id", text_field="text"):
     for split, rows in splits.items():
         if not isinstance(rows, list) or not rows:
             raise ValueError(f"split {split!r} must contain a nonempty list")
-    return _inspect(splits, id_field=id_field, text_field=text_field)
+    return _inspect(splits, id_field=id_field, text_field=text_field, text_policy=text_policy)
+
+
+def _validate_text_policy(text_policy):
+    if text_policy not in TEXT_POLICIES:
+        raise ValueError("text_policy must be exact or ascii-whitespace-v1")
 
 
 def _validate_fields(id_field, text_field):
@@ -27,7 +39,7 @@ def _validate_splits(splits):
         raise ValueError("split names must be nonempty strings")
 
 
-def _inspect(splits, sources=None, *, id_field="id", text_field="text"):
+def _inspect(splits, sources=None, *, id_field="id", text_field="text", text_policy="exact"):
     """Scan each iterable once; sources map JSONL indices to physical lines."""
     seen_ids, seen_texts, findings, counts = {}, {}, [], {}
     for split in sorted(splits):
@@ -41,6 +53,8 @@ def _inspect(splits, sources=None, *, id_field="id", text_field="text"):
                 value = row.get(field)
                 if not isinstance(value, str) or not value.strip():
                     raise ValueError(f"{where}.{field} must be a nonempty string")
+                if role == "text" and text_policy == "ascii-whitespace-v1":
+                    value = _ASCII_WHITESPACE.sub(" ", value.strip(" \t\r\n\v\f"))
                 if value in seen:
                     previous_split, previous_index = seen[value]
                     findings.append({"code": f"duplicate_{role}" if split == previous_split else f"overlap_{role}",
@@ -59,4 +73,6 @@ def _inspect(splits, sources=None, *, id_field="id", text_field="text"):
     report = {"schema_version": 1, "passed": not findings, "counts": counts, "findings": findings}
     if (id_field, text_field) != ("id", "text"):
         report["fields"] = {"id": id_field, "text": text_field}
+    if text_policy != "exact":
+        report["text_policy"] = text_policy
     return report
