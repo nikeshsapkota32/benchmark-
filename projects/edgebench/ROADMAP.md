@@ -4,7 +4,9 @@
   raw durations, nearest-rank percentiles, host metadata and CPU demo. Optional
   structured model/runtime/input configuration is validated and snapshotted
   before measurement; the CLI demo records its actual synthetic settings.
-- Next: saved-report schema checks and configuration compatibility policies.
+- Implemented: offline saved-report schema and summary-consistency validation
+  through the API and `--validate`; validation does not establish provenance.
+- Next: explicit configuration compatibility policies for saved reports.
 - Add repeatable workload adapters with loading excluded from inference timing.
 - Run on actual Raspberry Pi hardware when access exists; record temperature,
   power mode, runtime versions and repeatability before publishing comparisons.

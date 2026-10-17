@@ -71,6 +71,44 @@ preprocessing boundaries, power mode and other relevant settings in `protocol`.
 The CLI demo fills in Python/hashlib, the Python version, CPU, byte input and its
 1 MiB shape automatically. It has no model field because it performs no inference.
 
-Exit codes: 0 demo completed, 2 invalid CLI settings. No memory, energy,
+## Validate a saved report
+
+```sh
+edgebench --demo --warmups 3 --repeats 10 > timing.json
+edgebench --validate timing.json
+```
+
+Validation is offline and does not execute the workload. The Python API
+`from edgebench import validate_report` accepts a parsed report dictionary,
+returns `None` on success and raises `ValueError` on invalid data without
+changing the input. The CLI prints only
+`{"valid": true, "schema_version": 1, "repeats": 10}` on success; it does not
+copy workload or host metadata into that acknowledgement. Errors go to stderr
+with no partial stdout report. `--validate` cannot be combined with `--demo`,
+`--warmups` or `--repeats`.
+
+Checks include integer schema version 1, nonblank workload, integer warm-up and
+repeat counts, `ms` units, nearest-rank percentiles, environment string fields,
+and configuration types. Early schema-v1 reports without `configuration` remain
+valid; an explicit null configuration is invalid. Environment values may be empty
+strings when host information was unavailable. Unknown report/environment/summary
+fields are ignored; configuration fields retain their documented strict allowlist.
+
+Raw timings must be finite, nonnegative numbers (not booleans), with exactly one
+entry per repeat. Zero timings are allowed because clock resolution may be too
+coarse for short operations. Each summary is recomputed from these durations.
+Min/max and nearest-rank percentiles must match exactly. Mean and median allow
+relative error up to `1e-12` with no absolute tolerance for serialization rounding;
+aggressively rounded reports may fail. Even-sample medians avoid overflowing the
+sum of two large finite values. Duplicate JSON keys, NaN/Infinity constants,
+malformed UTF-8/JSON and missing files are errors. Reports are loaded into memory.
+
+Passing validates internal consistency, not authenticity, hardware identity,
+statistical reliability, configuration compatibility or model correctness. A
+fabricated but self-consistent report can pass. Keep original measurements and
+protocol records; this command cannot prove that any benchmark actually ran.
+
+Exit codes: 0 demo completed or saved report validated, 2 invalid settings/report
+or file error. No memory, energy,
 throughput, model-quality or full hardware-identification claims are made.
 MIT licensed. Developed with AI assistance.
