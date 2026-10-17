@@ -8,6 +8,7 @@
 - Next: opt-in normalization policies with explicit report metadata.
 - Consider disk-backed duplicate indexes and finding output for large datasets;
   the JSONL reader alone does not provide bounded-memory duplicate detection.
-- Add source hashes and format adapters only with documented licensed fixtures.
+- Implemented: SHA-256 hashes of the exact JSONL bytes consumed during validation.
+- Add format adapters only with documented licensed fixtures.
 - Evaluate approximate duplicate detection separately; never silently equate a
   fuzzy match with proven leakage.

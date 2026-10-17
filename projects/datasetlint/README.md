@@ -50,7 +50,7 @@ fallback to `id`/`text`. Selected values must still be nonblank strings.
 For a nondefault mapping, reports include
 `"fields": {"id": "sample_id", "text": "prompt"}`. Finding codes continue to
 describe the semantic role (`duplicate_id`, `overlap_text`, etc.), not the source
-key. Default `id`/`text` reports are unchanged. Field names, but not record
+key. The default `id`/`text` mapping omits `fields`. Field names, but not record
 values, are included in reports and validation diagnostics.
 
 ## JSONL files
@@ -78,6 +78,19 @@ All files must validate before any report is printed. A malformed later line
 returns exit 2 even if earlier records already revealed overlap. JSONL avoids
 loading all input records, but retains exact ID/text indexes and findings in
 memory; memory usage still grows with unique content and finding count.
+
+JSONL reports also include `source_sha256`, mapping each split name to the
+SHA-256 of the exact file bytes consumed by the parser. Hashing happens in the
+same pass as validation, without reopening or loading the entire file. This
+identifies sources even when a report has no duplicate findings. Whitespace,
+record order, line endings and the presence of a final newline affect the hash.
+Identical bytes at different paths have the same hash. All files must validate
+before hashes or findings are returned; malformed input produces no partial
+audit. The JSON-object API does not include file hashes.
+
+Hashes identify the bytes read, not dataset provenance, privacy or a verified
+snapshot of a file being modified concurrently. Keep source files stable during
+inspection. They do not prove that a model trained on or evaluated these files.
 
 Exit codes: 0 clean, 1 duplicate/overlap findings, 2 malformed input/file error.
 An exact match is a reason to investigate leakage, not proof that leakage has
