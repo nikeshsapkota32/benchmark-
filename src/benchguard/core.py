@@ -84,22 +84,38 @@ def _regressed(before, after, higher_is_better, limit):
     return degradation > limit and abs(degradation - limit) > margin
 
 
-def compare(baseline, candidate, tolerance=0.0, *, metric_tolerances=None):
+def compare(baseline, candidate, tolerance=0.0, *, metric_tolerances=None, metric_directions=None):
     """Compare in native metric units; this is not a significance test.
 
     Model identifiers may differ. Protocol, dataset revision, sample counts
     and metric directions must match for a result to be comparable.
     Metric-specific absolute tolerances override the default across all tasks
     using that metric. Unknown baseline metrics are errors, not ignored rules.
+    Optional metric directions require both runs to match an independent policy;
+    they never rewrite the input metadata.
     """
     number(tolerance, "tolerance")
     if tolerance < 0:
         raise ValueError("tolerance must be nonnegative")
     before, after = validate(baseline), validate(candidate)
+    directions = {} if metric_directions is None else metric_directions
+    if not isinstance(directions, dict):
+        raise ValueError("metric_directions must be an object")
+    baseline_metrics = {metric for _, metric in before}
+    for metric, direction in directions.items():
+        if not isinstance(metric, str) or not metric.strip():
+            raise ValueError("metric direction names must be nonempty strings")
+        if metric not in baseline_metrics:
+            raise ValueError(f"unknown baseline metric in directions: {metric}")
+        if type(direction) is not bool:
+            raise ValueError(f"direction for {metric} must be a boolean")
+    for label, indexed in (("baseline", before), ("candidate", after)):
+        for (task, metric), entry in indexed.items():
+            if metric in directions and entry["higher_is_better"] != directions[metric]:
+                raise ValueError(f"{label} direction conflicts with policy for {task}/{metric}")
     overrides = {} if metric_tolerances is None else metric_tolerances
     if not isinstance(overrides, dict):
         raise ValueError("metric_tolerances must be an object")
-    baseline_metrics = {metric for _, metric in before}
     for metric, limit in overrides.items():
         if not isinstance(metric, str) or not metric.strip():
             raise ValueError("metric tolerance names must be nonempty strings")

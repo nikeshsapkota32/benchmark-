@@ -75,6 +75,37 @@ out-of-range JSON integers are input errors as well.
 Finite scores remain comparable even when their difference exceeds that range;
 the comparison preserves the tolerance boundary instead of overflowing.
 
+### Pin metric directions independently
+
+Two runs can agree on an incorrect `higher_is_better` value. To catch that,
+provide a reviewed JSON policy separate from the run files:
+
+```json
+{"accuracy": true, "latency_ms": false}
+```
+
+```sh
+benchguard baseline.json candidate.json --metric-directions directions.json
+```
+
+The Python API accepts `compare(baseline, candidate, metric_directions=policy)`.
+Values must be JSON booleans: true requires higher-is-better, false requires
+lower-is-better. Keys are exact baseline metric names. Each rule applies across
+all tasks in both runs, including candidate-only tasks using that metric.
+Conflicting run metadata is an input error (exit 2), not silently corrected.
+This catches shared mistakes even when both run files contain the same direction.
+
+Partial or empty policies are allowed; unlisted metrics retain the existing
+run-metadata rules. Unknown baseline metrics, candidate-only metric names,
+nonboolean values, duplicate JSON keys and non-object policy files are errors.
+Tolerance overrides cannot bypass direction conflicts. Missing results, sample
+identity, counts, dataset revision and protocol checks remain in force.
+
+Default JSON output is unchanged. Markdown reports include the exact-byte
+direction-policy SHA-256 in the input audit table. The policy must itself be
+reviewed and versioned: BenchGuard cannot infer the scientifically correct
+direction from a metric name or verify that a supplied policy is trustworthy.
+
 ### Check that runs evaluated the same samples
 
 Optionally add `sample_ids` to each task/metric result. Provide stable string IDs
@@ -120,7 +151,7 @@ still accompany a failing CI step. Invalid inputs return exit 2 without printing
 a partial report.
 
 The audit table contains SHA-256 hashes of the exact baseline and candidate file
-bytes, plus the metric-tolerance file when supplied. Each file is read once for
+bytes, plus metric-tolerance and metric-direction files when supplied. Each file is read once for
 both parsing and hashing. Formatting or newline changes therefore change its
 hash even if parsed data is equivalent. The report also records the global
 tolerance; effective per-metric limits appear in comparable rows' reasons.
