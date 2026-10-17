@@ -10,7 +10,9 @@
 - Per-metric absolute tolerances: implemented via `--metric-tolerances`.
 - Explicit direction policies separate from run metadata.
 - Markdown report with an audit trail of source file hashes.
-- Sample-ID fingerprints to detect changes hidden by equal sample counts.
+- Sample-ID fingerprints: implemented for optional per-result `sample_ids`,
+  detecting changes hidden by equal sample counts. Content verification remains
+  outside the scope of this identity check.
 - Paired sample-level comparisons with seeded bootstrap intervals. Do not infer
   significance from aggregate scores alone.
 

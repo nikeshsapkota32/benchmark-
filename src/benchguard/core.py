@@ -3,6 +3,8 @@
 import math
 from dataclasses import dataclass
 
+from .samples import sample_fingerprint
+
 
 @dataclass(frozen=True)
 class Result:
@@ -12,6 +14,8 @@ class Result:
     candidate: float | None
     status: str
     reason: str
+    baseline_sample_fingerprint: str | None = None
+    candidate_sample_fingerprint: str | None = None
 
 
 def number(value, label):
@@ -49,6 +53,10 @@ def validate(run):
         n = entry.get("samples")
         if isinstance(n, bool) or not isinstance(n, int) or n <= 0:
             raise ValueError("samples must be a positive integer")
+        if "sample_ids" in entry:
+            sample_fingerprint(entry["sample_ids"])
+            if len(entry["sample_ids"]) != n:
+                raise ValueError("sample_ids length must equal samples")
         if type(entry.get("higher_is_better")) is not bool:
             raise ValueError("higher_is_better must be a boolean")
         indexed[key] = entry
@@ -85,12 +93,18 @@ def compare(baseline, candidate, tolerance=0.0, *, metric_tolerances=None):
     rows = []
     for task, metric in sorted(before.keys() | after.keys()):
         a, b = before.get((task, metric)), after.get((task, metric))
+        a_fingerprint = sample_fingerprint(a["sample_ids"]) if a and "sample_ids" in a else None
+        b_fingerprint = sample_fingerprint(b["sample_ids"]) if b and "sample_ids" in b else None
         if a is None:
             status, reason = "added", "not present in baseline"
         elif b is None:
             status, reason = "missing", "required baseline result is absent"
         elif a["samples"] != b["samples"]:
             status, reason = "incompatible", "sample counts differ"
+        elif (a_fingerprint is None) != (b_fingerprint is None):
+            status, reason = "incompatible", "sample IDs are present in only one run"
+        elif a_fingerprint != b_fingerprint:
+            status, reason = "incompatible", "sample IDs differ"
         elif a["higher_is_better"] != b["higher_is_better"]:
             status, reason = "incompatible", "metric direction differs"
         else:
@@ -102,7 +116,8 @@ def compare(baseline, candidate, tolerance=0.0, *, metric_tolerances=None):
             status = "regression" if regressed else "pass"
             reason = f"allowed absolute degradation: {limit:g}"
         rows.append(Result(task, metric, a["value"] if a else None,
-                           b["value"] if b else None, status, reason))
+                           b["value"] if b else None, status, reason,
+                           a_fingerprint, b_fingerprint))
     return rows
 
 
