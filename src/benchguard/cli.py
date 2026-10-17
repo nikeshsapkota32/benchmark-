@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 from .core import compare, failed
-from .report import render_markdown
+from .report import build_json_audit, render_markdown
 
 
 def _unique_object(pairs):
@@ -38,7 +38,7 @@ def main(argv=None):
                         help="JSON object mapping baseline metric names to absolute tolerances")
     parser.add_argument("--metric-directions", metavar="PATH",
                         help="JSON object mapping baseline metric names to required higher_is_better booleans")
-    parser.add_argument("--format", choices=("json", "markdown"), default="json",
+    parser.add_argument("--format", choices=("json", "json-audit", "markdown"), default="json",
                         help="output format (default: json)")
     args = parser.parse_args(argv)
     try:
@@ -63,8 +63,12 @@ def main(argv=None):
     if args.format == "markdown":
         print(render_markdown(baseline, candidate, rows, source_hashes, args.tolerance))
     else:
-        print(json.dumps({"passed": not failed(rows), "results": [asdict(row) for row in rows]},
-                         indent=2, allow_nan=False))
+        if args.format == "json-audit":
+            report = build_json_audit(baseline, candidate, rows, source_hashes, args.tolerance,
+                                      overrides, directions)
+        else:
+            report = {"passed": not failed(rows), "results": [asdict(row) for row in rows]}
+        print(json.dumps(report, indent=2, allow_nan=False))
     return 1 if failed(rows) else 0
 
 

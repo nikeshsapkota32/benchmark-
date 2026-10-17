@@ -165,6 +165,47 @@ Raw sample IDs are not included. When redirecting output to a file, choose a new
 report path distinct from all inputs: shell redirection can truncate a file
 before BenchGuard starts.
 
+## Machine-readable audit reports
+
+For CI artifact storage or downstream report processing, opt in to a versioned
+JSON envelope with the same input audit information:
+
+```sh
+benchguard baseline.json candidate.json --format json-audit \
+  --metric-tolerances tolerances.json --metric-directions directions.json
+```
+
+Default `--format json` still returns only `passed` and `results`; existing
+consumers do not need to change. `json-audit` retains those same fields and adds:
+
+| Field | Content |
+| --- | --- |
+| `schema_version` | Integer `1`, versioning this report format, not the input run schema |
+| `report_type` | `"benchguard-comparison"` |
+| `runs` | `baseline` and `candidate`, each containing `model`, `dataset_revision` and `protocol` |
+| `policy` | Global `tolerance`, parsed `metric_tolerances` and parsed `metric_directions` |
+| `source_sha256` | Exact-byte hashes for `baseline`, `candidate` and any supplied `metric_tolerances` / `metric_directions` files |
+
+Policy maps are empty objects when no policy is supplied. An explicitly supplied
+empty policy also produces an empty map, but has a source hash, distinguishing
+it from an absent file. Each file is read once for parsing and hashing. Hashes
+include whitespace and line endings; the normalized policy maps describe what
+was applied, while hashes identify the original bytes. Result reasons retain
+the effective tolerance for each comparable metric.
+
+The format uses the same comparison and exit codes as JSON and Markdown: 0 for
+pass, 1 for a failed comparison, and 2 for an input error. Input errors emit no
+partial audit. Reports contain no timestamps, input paths or extra input fields.
+Sample identity is represented by the existing fingerprints in `results`, not
+raw `sample_ids` arrays. Output is deterministic for identical inputs/options.
+
+Run metadata and task/metric names are caller-supplied and are preserved as JSON
+strings, not sanitized for HTML or Markdown. Escape them when rendering in a
+different format, and review metadata before sharing. Hashes are neither
+encryption nor proof of provenance, correct measurements or model quality.
+Keep the original run/policy files for reproducibility; this report is not a
+replacement for them. When redirecting output, use a path distinct from inputs.
+
 ## What this does not prove
 
 This is a deterministic regression gate, not a statistical significance test.
