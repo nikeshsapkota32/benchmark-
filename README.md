@@ -36,8 +36,34 @@ These are synthetic fixtures, not measurements from a real model.
 
 Use `higher_is_better: false` for latency, error rate or perplexity. The tolerance
 is an absolute difference in native metric units: 0.01 for an accuracy stored
-between zero and one means one percentage point. Use separate comparisons when
-metrics need different tolerances; per-metric policy is planned.
+between zero and one means one percentage point.
+
+### Different tolerances for different metrics
+
+Use `--metric-tolerances tolerances.json` when a run mixes metrics with different
+units. The JSON file maps exact metric names to nonnegative, finite absolute
+tolerances. For example, this allows one percentage point of accuracy loss and
+five milliseconds of latency increase:
+
+```json
+{"accuracy": 0.01, "latency_ms": 5}
+```
+
+```sh
+benchguard baseline.json candidate.json --metric-tolerances tolerances.json
+```
+
+Each override applies to every task with that metric name. Metrics omitted from
+the file use `--tolerance` (zero by default). An explicit zero override tightens
+a more permissive default. The metric direction still comes from the run data.
+Name latency metrics with their unit, and only reuse a metric name across tasks
+when the unit and scale agree.
+
+An unknown baseline metric, duplicate JSON key, negative/nonfinite tolerance,
+or malformed policy exits with code 2. A metric present only in the candidate
+cannot have an override. Tolerances never bypass missing results, changed sample
+counts, or incompatible metadata. The report includes the effective tolerance
+in the reason for each compared result.
 
 Model identifiers may differ. Dataset revision and protocol must match exactly.
 Sample counts and metric direction must match for each task/metric pair.
@@ -64,7 +90,7 @@ adapter is included yet. A passing report does not establish general model quali
 
 The core lives in `src/benchguard/core.py`; the CLI handles files and exit codes.
 Tests run on the standard library alone. CI is configured for Python 3.10, 3.12
-and 3.13; those remote jobs have not run until the project is published.
+and 3.13.
 
 Contributions should include a failing example or a specific use case, a focused
 change and relevant tests. Describe what actually changed in the commit message.

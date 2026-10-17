@@ -26,9 +26,15 @@ def main(argv=None):
     parser.add_argument("candidate")
     parser.add_argument("--tolerance", type=float, default=0.0,
                         help="allowed degradation in absolute metric units")
+    parser.add_argument("--metric-tolerances", metavar="PATH",
+                        help="JSON object mapping baseline metric names to absolute tolerances")
     args = parser.parse_args(argv)
     try:
-        rows = compare(load(args.baseline), load(args.candidate), args.tolerance)
+        overrides = load(args.metric_tolerances) if args.metric_tolerances else {}
+        if not isinstance(overrides, dict):
+            raise ValueError("metric tolerances file must contain a JSON object")
+        rows = compare(load(args.baseline), load(args.candidate), args.tolerance,
+                       metric_tolerances=overrides)
     except (ValueError, OSError, UnicodeError) as exc:
         print(f"benchguard: {exc}", file=sys.stderr)
         return 2
