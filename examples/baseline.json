@@ -1,0 +1,1 @@
+{"schema_version":1,"model":"synthetic-baseline","dataset_revision":"fixture-v1","protocol":"demo-only","results":[{"task":"demo","metric":"accuracy","value":0.8,"samples":100,"higher_is_better":true}]}
