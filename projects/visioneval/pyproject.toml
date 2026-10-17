@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visioneval"
+version = "0.1.0"
+description = "Offline digit and integer arithmetic prediction scoring"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Nikesh Sapkota"}]
+dependencies = []
+
+[project.scripts]
+visioneval = "visioneval.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
