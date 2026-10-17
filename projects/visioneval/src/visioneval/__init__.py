@@ -2,6 +2,8 @@
 
 import operator
 
+from .response import numeric_text
+
 
 def edit_distance(a, b):
     previous = list(range(len(b) + 1))
@@ -14,9 +16,11 @@ def edit_distance(a, b):
     return previous[-1]
 
 
-def evaluate(data, *, include_details=False):
+def evaluate(data, *, include_details=False, response_policy="strict"):
     if type(include_details) is not bool:
         raise ValueError("include_details must be a boolean")
+    if response_policy not in ("strict", "numeric-text-v1"):
+        raise ValueError("response_policy must be strict or numeric-text-v1")
     if not isinstance(data, dict) or type(data.get("schema_version")) is not int or data["schema_version"] != 1:
         raise ValueError("schema_version must be integer 1")
     for name in ("model", "dataset_revision", "protocol"):
@@ -39,6 +43,8 @@ def evaluate(data, *, include_details=False):
         if "prediction" not in row:
             raise ValueError(f"record {index} needs prediction (use null for missing)")
         target, prediction = row.get("target"), row["prediction"]
+        if response_policy == "numeric-text-v1":
+            prediction = numeric_text(prediction, kind, index)
         if kind == "digits":
             if not isinstance(target, str) or not target or any(c not in "0123456789" for c in target):
                 raise ValueError("digit targets must be nonempty ASCII digit strings")
@@ -78,4 +84,6 @@ def evaluate(data, *, include_details=False):
                        "character_error_rate": edits / digits})
     if include_details:
         report["details"] = details
+    if response_policy != "strict":
+        report["response_policy"] = response_policy
     return report
