@@ -9,5 +9,7 @@
 - Next: reviewed format adapters; broader response policies require a defined
   protocol and explicit accounting for unparseable responses, not answer guessing.
 - Review licenses before adding real handwritten-number fixtures or adapters.
-- Add BenchGuard exports with pinned dataset/protocol and stable sample IDs.
+- Implemented: opt-in BenchGuard saved-run exports with metric directions,
+  stable sample IDs and versioned protocol encoding that pins kind and response
+  policy. Input metadata remains caller-supplied, not verified provenance.
 - Evaluate paired uncertainty only with appropriate sample-level data.

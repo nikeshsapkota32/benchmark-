@@ -91,7 +91,50 @@ runs. Reports still include caller-supplied model/dataset/protocol metadata,
 lengths and outcomes; this is not anonymization. Review reports before sharing.
 All records must validate before any output is printed, even in details mode.
 
-The JSON report retains run metadata and aggregate counts/scores. Exit 0 means
+## Export a BenchGuard run
+
+Use the opt-in export to gate saved evaluations with BenchGuard:
+
+```sh
+visioneval baseline-predictions.json --format benchguard > baseline-run.json
+visioneval candidate-predictions.json --format benchguard > candidate-run.json
+benchguard baseline-run.json candidate-run.json --tolerance 0.01
+```
+
+BenchGuard is installed separately; VisionEval does not import it or execute
+it. The Python API is `from visioneval.export import to_benchguard`, followed by
+`to_benchguard(data, response_policy="strict")`. The default CLI `--format json`
+and `evaluate()` reports are unchanged. `--details` cannot be combined with
+`--format benchguard`. Use output paths distinct from prediction inputs: shell
+redirection can truncate a file before the evaluator starts.
+
+Export schema version 1 retains the caller's model and dataset revision. Task
+names are `visioneval/digits` and `visioneval/arithmetic`. Both export
+`exact_match` (higher is better); digits also export `character_error_rate`
+(lower is better, not clipped to 1). Every metric includes all evaluated record
+IDs as `sample_ids` and the number of records as `samples`, including missing
+predictions. For character error rate, `samples` still counts records; the score
+denominator remains total target digits, not record count. BenchGuard checks
+sample-ID sets independently of record order.
+
+The exported protocol string is compact, key-sorted, ASCII-escaped JSON with
+`export: "visioneval-benchguard-v1"`, `kind`, the original `protocol`, and the
+explicit `response_policy` (including `strict`). This prevents accidental
+comparisons across evaluator kinds or response policies even if the caller's
+protocol was not updated. Model identifiers may differ across a comparison.
+Pin dataset revisions and include prompt, sampling and inference settings in
+the original protocol; the exporter cannot verify that metadata or detect
+changed targets behind reused IDs/revisions. Exported scores are deterministic
+aggregates, not statistical significance estimates.
+
+Unlike the normal report, **exports contain raw sample IDs**. They omit targets,
+predictions, operands and extra record fields, but are not anonymized. Use stable
+non-sensitive dataset IDs and review exports before sharing. All records must
+validate before an export is emitted; no rejected record is silently dropped.
+Exit 0 only means the export succeeded. The subsequent BenchGuard command makes
+the pass/fail decision; no inference or hardware benchmark is performed here.
+
+The normal JSON report retains run metadata and aggregate counts/scores. Exit 0 means
 scoring completed, even for poor scores; exit 2 means invalid input/file error.
 No pass/fail quality threshold or significance test is implied. The metadata is
 supplied by the caller and its provenance is not verified. All example data is
