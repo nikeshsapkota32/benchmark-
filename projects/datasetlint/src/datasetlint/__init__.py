@@ -1,7 +1,8 @@
 """Offline checks for exact duplicate text and reused example IDs."""
 
 
-def inspect(dataset):
+def inspect(dataset, *, id_field="id", text_field="text"):
+    _validate_fields(id_field, text_field)
     if not isinstance(dataset, dict) or type(dataset.get("schema_version")) is not int or dataset["schema_version"] != 1:
         raise ValueError("schema_version must be integer 1")
     splits = dataset.get("splits")
@@ -9,7 +10,14 @@ def inspect(dataset):
     for split, rows in splits.items():
         if not isinstance(rows, list) or not rows:
             raise ValueError(f"split {split!r} must contain a nonempty list")
-    return _inspect(splits)
+    return _inspect(splits, id_field=id_field, text_field=text_field)
+
+
+def _validate_fields(id_field, text_field):
+    if any(not isinstance(field, str) or not field.strip() for field in (id_field, text_field)):
+        raise ValueError("id_field and text_field must be nonempty strings")
+    if id_field == text_field:
+        raise ValueError("id_field and text_field must be distinct")
 
 
 def _validate_splits(splits):
@@ -19,7 +27,7 @@ def _validate_splits(splits):
         raise ValueError("split names must be nonempty strings")
 
 
-def _inspect(splits, sources=None):
+def _inspect(splits, sources=None, *, id_field="id", text_field="text"):
     """Scan each iterable once; sources map JSONL indices to physical lines."""
     seen_ids, seen_texts, findings, counts = {}, {}, [], {}
     for split in sorted(splits):
@@ -29,13 +37,13 @@ def _inspect(splits, sources=None):
             where = f"{sources[split]}:{index + 1}" if sources else f"{split}[{index}]"
             if not isinstance(row, dict):
                 raise ValueError(f"{where} must be an object")
-            for field, seen in (("id", seen_ids), ("text", seen_texts)):
+            for role, field, seen in (("id", id_field, seen_ids), ("text", text_field, seen_texts)):
                 value = row.get(field)
                 if not isinstance(value, str) or not value.strip():
                     raise ValueError(f"{where}.{field} must be a nonempty string")
                 if value in seen:
                     previous_split, previous_index = seen[value]
-                    findings.append({"code": f"duplicate_{field}" if split == previous_split else f"overlap_{field}",
+                    findings.append({"code": f"duplicate_{role}" if split == previous_split else f"overlap_{role}",
                                      "split": split, "index": index,
                                      "first_split": previous_split, "first_index": previous_index})
                     if sources:
@@ -48,4 +56,7 @@ def _inspect(splits, sources=None):
         if counts[split] == 0:
             where = sources[split] if sources else repr(split)
             raise ValueError(f"{where}: split must contain at least one record")
-    return {"schema_version": 1, "passed": not findings, "counts": counts, "findings": findings}
+    report = {"schema_version": 1, "passed": not findings, "counts": counts, "findings": findings}
+    if (id_field, text_field) != ("id", "text"):
+        report["fields"] = {"id": id_field, "text": text_field}
+    return report

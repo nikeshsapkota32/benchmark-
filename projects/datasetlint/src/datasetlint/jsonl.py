@@ -4,7 +4,7 @@ from contextlib import ExitStack
 import json
 from pathlib import Path
 
-from . import _inspect, _validate_splits
+from . import _inspect, _validate_fields, _validate_splits
 
 
 def unique_object(pairs):
@@ -36,8 +36,9 @@ def _records(stream, path):
         yield row
 
 
-def inspect_jsonl(splits):
+def inspect_jsonl(splits, *, id_field="id", text_field="text"):
     """Map split names to paths; return findings only after every file validates."""
+    _validate_fields(id_field, text_field)
     _validate_splits(splits)
     try:
         paths = {name: Path(path) for name, path in splits.items()}
@@ -46,4 +47,5 @@ def inspect_jsonl(splits):
     with ExitStack() as stack:
         streams = {name: _records(stack.enter_context(paths[name].open("rb")), str(paths[name]))
                    for name in sorted(paths)}
-        return _inspect(streams, sources={name: str(path) for name, path in paths.items()})
+        return _inspect(streams, sources={name: str(path) for name, path in paths.items()},
+                        id_field=id_field, text_field=text_field)
