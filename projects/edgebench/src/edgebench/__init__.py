@@ -11,12 +11,16 @@ from .report import summarize, validate_report
 
 def _validate_sync_callable(callback, name):
     for target in (callback, getattr(callback, "__call__", None)):
+        if inspect.isgeneratorfunction(target):
+            raise ValueError(f"{name} must complete synchronously; generator callbacks are unsupported")
         if inspect.iscoroutinefunction(target) or inspect.isasyncgenfunction(target):
             raise ValueError(f"{name} must be synchronous; async callbacks are unsupported")
 
 
 def _call_sync(callback, name):
     result = callback()
+    if inspect.isgenerator(result):
+        raise ValueError(f"{name} returned a generator; consume it inside a synchronous callback")
     if inspect.isawaitable(result) or inspect.isasyncgen(result):
         # A wrapper can hide an async function from preflight inspection. Close
         # native coroutines to avoid an unawaited-coroutine warning, but do not
