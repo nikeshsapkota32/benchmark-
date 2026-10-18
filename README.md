@@ -75,6 +75,37 @@ out-of-range JSON integers are input errors as well.
 Finite scores remain comparable even when their difference exceeds that range;
 the comparison preserves the tolerance boundary instead of overflowing.
 
+### Pin metric directions independently
+
+Two runs can agree on an incorrect `higher_is_better` value. To catch that,
+provide a reviewed JSON policy separate from the run files:
+
+```json
+{"accuracy": true, "latency_ms": false}
+```
+
+```sh
+benchguard baseline.json candidate.json --metric-directions directions.json
+```
+
+The Python API accepts `compare(baseline, candidate, metric_directions=policy)`.
+Values must be JSON booleans: true requires higher-is-better, false requires
+lower-is-better. Keys are exact baseline metric names. Each rule applies across
+all tasks in both runs, including candidate-only tasks using that metric.
+Conflicting run metadata is an input error (exit 2), not silently corrected.
+This catches shared mistakes even when both run files contain the same direction.
+
+Partial or empty policies are allowed; unlisted metrics retain the existing
+run-metadata rules. Unknown baseline metrics, candidate-only metric names,
+nonboolean values, duplicate JSON keys and non-object policy files are errors.
+Tolerance overrides cannot bypass direction conflicts. Missing results, sample
+identity, counts, dataset revision and protocol checks remain in force.
+
+Default JSON output is unchanged. Markdown reports include the exact-byte
+direction-policy SHA-256 in the input audit table. The policy must itself be
+reviewed and versioned: BenchGuard cannot infer the scientifically correct
+direction from a metric name or verify that a supplied policy is trustworthy.
+
 ### Check that runs evaluated the same samples
 
 Optionally add `sample_ids` to each task/metric result. Provide stable string IDs
@@ -105,6 +136,75 @@ both fingerprints are null. IDs do not bypass protocol, revision or score checks
 | 0 | All baseline metrics pass |
 | 1 | Regression, missing metric or incompatible result |
 | 2 | Malformed input, incompatible run metadata or file error |
+
+## Markdown review reports
+
+```sh
+benchguard examples/baseline.json examples/candidate.json --format markdown --tolerance 0.01
+```
+
+`--format markdown` prints a review-friendly report to standard output, with
+the overall outcome, run metadata, metric values/statuses/reasons and an input
+audit table. JSON remains the default; its report shape is unchanged. Both
+formats use the same comparison rules and exit codes, so a Markdown report can
+still accompany a failing CI step. Invalid inputs return exit 2 without printing
+a partial report.
+
+The audit table contains SHA-256 hashes of the exact baseline and candidate file
+bytes, plus metric-tolerance and metric-direction files when supplied. Each file is read once for
+both parsing and hashing. Formatting or newline changes therefore change its
+hash even if parsed data is equivalent. The report also records the global
+tolerance; effective per-metric limits appear in comparable rows' reasons.
+Hashes identify inputs but cannot verify their provenance or model quality.
+
+Input text is escaped inside table cells so Markdown/HTML, pipes and newlines
+cannot introduce extra report structure. Reports are deterministic for the same
+inputs and options and include no timestamps or input paths. They do include
+model names, dataset/protocol metadata and scores, so review them before sharing.
+Raw sample IDs are not included. When redirecting output to a file, choose a new
+report path distinct from all inputs: shell redirection can truncate a file
+before BenchGuard starts.
+
+## Machine-readable audit reports
+
+For CI artifact storage or downstream report processing, opt in to a versioned
+JSON envelope with the same input audit information:
+
+```sh
+benchguard baseline.json candidate.json --format json-audit \
+  --metric-tolerances tolerances.json --metric-directions directions.json
+```
+
+Default `--format json` still returns only `passed` and `results`; existing
+consumers do not need to change. `json-audit` retains those same fields and adds:
+
+| Field | Content |
+| --- | --- |
+| `schema_version` | Integer `1`, versioning this report format, not the input run schema |
+| `report_type` | `"benchguard-comparison"` |
+| `runs` | `baseline` and `candidate`, each containing `model`, `dataset_revision` and `protocol` |
+| `policy` | Global `tolerance`, parsed `metric_tolerances` and parsed `metric_directions` |
+| `source_sha256` | Exact-byte hashes for `baseline`, `candidate` and any supplied `metric_tolerances` / `metric_directions` files |
+
+Policy maps are empty objects when no policy is supplied. An explicitly supplied
+empty policy also produces an empty map, but has a source hash, distinguishing
+it from an absent file. Each file is read once for parsing and hashing. Hashes
+include whitespace and line endings; the normalized policy maps describe what
+was applied, while hashes identify the original bytes. Result reasons retain
+the effective tolerance for each comparable metric.
+
+The format uses the same comparison and exit codes as JSON and Markdown: 0 for
+pass, 1 for a failed comparison, and 2 for an input error. Input errors emit no
+partial audit. Reports contain no timestamps, input paths or extra input fields.
+Sample identity is represented by the existing fingerprints in `results`, not
+raw `sample_ids` arrays. Output is deterministic for identical inputs/options.
+
+Run metadata and task/metric names are caller-supplied and are preserved as JSON
+strings, not sanitized for HTML or Markdown. Escape them when rendering in a
+different format, and review metadata before sharing. Hashes are neither
+encryption nor proof of provenance, correct measurements or model quality.
+Keep the original run/policy files for reproducibility; this report is not a
+replacement for them. When redirecting output, use a path distinct from inputs.
 
 ## What this does not prove
 
