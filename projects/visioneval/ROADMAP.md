@@ -20,3 +20,6 @@
   predictions and exact match for each operator present. Overall scoring and
   BenchGuard exports remain aggregate only.
 - Evaluate paired uncertainty only with appropriate sample-level data.
+- Implemented: exact edit-distance fast paths and common-end trimming, with
+  shorter residual working rows. Exhaustive short-string and seeded oracle tests
+  preserve scoring semantics; long dissimilar inputs remain quadratic-time.

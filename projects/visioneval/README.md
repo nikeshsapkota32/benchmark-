@@ -25,6 +25,14 @@ and substitutions. This rate can exceed 1; it is not a positionwise accuracy.
 Empty predictions count as missing. Non-ASCII numeral scripts and free-form
 model explanations are not supported.
 
+The edit-distance implementation skips exact matches and empty strings, trims
+shared prefixes/suffixes, and keeps dynamic-programming rows on the shorter
+remaining string. These are exact optimizations, not approximate matching or
+normalization: leading zeros and insertion/deletion/substitution costs are
+unchanged. Long dissimilar strings can still take quadratic time. Working rows
+scale with the shorter residual string; input records and sliced strings still
+consume memory. No total-memory or model-inference speed claim is implied.
+
 For arithmetic, each record also has two integer `operands` and `operator` of
 `+`, `-` or `*`. Target must equal the computed result; inconsistent labels are
 input errors. Prediction must be an integer or null. Booleans are rejected.
