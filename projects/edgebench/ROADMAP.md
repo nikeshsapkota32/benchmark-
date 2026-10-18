@@ -8,6 +8,8 @@
   through the API and `--validate`; validation does not establish provenance.
 - Implemented: reject async callbacks and awaitable/async-generator return values
   instead of reporting coroutine creation as completed work. No event loop is run.
+- Implemented: reject Python generator callbacks and generator return values;
+  callers must explicitly consume streaming work within the timed callback.
 - Implemented: `strict-metadata-v1` compatibility checks with required protocol,
   optional additional required fields and explicit missing/different diagnostics.
 - Next: reviewed policies for experiments that intentionally vary selected settings.

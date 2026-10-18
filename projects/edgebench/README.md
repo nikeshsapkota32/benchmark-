@@ -46,6 +46,17 @@ completion callback; returning an awaitable from that callback is not sufficient
 Ordinary return values are still discarded. These checks cannot detect every
 lazy result or hidden device queue, so completion remains the caller's contract.
 
+Python generator functions are also rejected before any work runs. Calling one
+creates a generator without executing its body, so timing that call would not
+measure completed work. Wrappers returning a generator (including a generator
+expression or an already started generator) are rejected after the call, during
+any phase of measurement or synchronization. EdgeBench neither consumes nor
+closes these caller-owned generators; the caller is responsible for cleanup.
+To benchmark a streaming operation, consume it explicitly inside the callback,
+for example `benchmark(lambda: list(generate()), workload="full stream")`.
+That example includes consumption and list allocation in the timing; choose and
+document the consumption strategy that matches your workload.
+
 Per-call dispatch and return-value checks are inside the measured interval,
 along with the synchronization callback. Their overhead can matter for very
 short operations; this is completed-call latency under the harness, not a
