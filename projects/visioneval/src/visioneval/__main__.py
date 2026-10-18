@@ -16,6 +16,10 @@ def unique_object(pairs):
     return result
 
 
+def reject_constant(value):
+    raise ValueError("nonstandard JSON constant")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Score saved digit or arithmetic predictions offline.")
     parser.add_argument("predictions", type=Path)
@@ -34,7 +38,7 @@ def main(argv=None):
         parser.error("--by-operator cannot be combined with --format benchguard")
     try:
         data = json.loads(args.predictions.read_text(encoding="utf-8"),
-                          object_pairs_hook=unique_object)
+                          object_pairs_hook=unique_object, parse_constant=reject_constant)
         if args.format == "benchguard":
             report = to_benchguard(data, response_policy=args.response_policy)
         else:

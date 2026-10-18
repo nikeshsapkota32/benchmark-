@@ -17,6 +17,14 @@ list. Every record requires a unique nonblank string `id`, a `target` and an
 explicit `prediction`. Use null for missing predictions; they remain in the
 denominator. Duplicate JSON keys and duplicate IDs are rejected.
 
+JSON file parsing rejects the nonstandard unquoted constants `NaN`, `Infinity`
+and `-Infinity` anywhere in the input, including nested, otherwise ignored fields.
+It exits 2 without emitting a report or BenchGuard export. Quoted strings such as
+`"NaN"` remain ordinary strings (and still must satisfy any relevant field's
+schema). This is a file-syntax check, not validation of the meaning of every
+extra field. The in-memory `evaluate()` and `to_benchguard()` APIs continue to
+ignore extra fields; scoring, response policies and export fingerprints are unchanged.
+
 For digits, target is a nonempty ASCII digit string. Prediction is an ASCII
 digit string (possibly empty) or null. Leading zeros matter. Exact-match accuracy
 counts whole correct strings. Character error rate is summed Levenshtein edit
