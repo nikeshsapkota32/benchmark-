@@ -6,6 +6,26 @@ from .response import numeric_text
 
 
 def edit_distance(a, b):
+    """Exact unit-cost Levenshtein distance, with shorter residual working rows."""
+    if a == b:
+        return 0
+    if not a or not b:
+        return len(a) + len(b)
+    # Equal ends cannot contribute to the minimum edit distance. Trim them
+    # before allocating the dynamic-programming rows, preserving leading zeros.
+    start = 0
+    end_a, end_b = len(a), len(b)
+    while start < min(end_a, end_b) and a[start] == b[start]:
+        start += 1
+    while end_a > start and end_b > start and a[end_a - 1] == b[end_b - 1]:
+        end_a -= 1
+        end_b -= 1
+    a, b = a[start:end_a], b[start:end_b]
+    if not a or not b:
+        return len(a) + len(b)
+    # The distance is symmetric: keep only the shorter side in each row.
+    if len(a) < len(b):
+        a, b = b, a
     previous = list(range(len(b) + 1))
     for i, left in enumerate(a, 1):
         current = [i]
