@@ -177,6 +177,44 @@ or a fair experiment. This strict policy intentionally flags changes to model,
 runtime or hardware settings; comparisons that intentionally vary them need a
 separately specified experimental policy.
 
+## Declare intentionally varied configuration settings
+
+To compare an experiment that intentionally changes thread count, for example:
+
+```sh
+edgebench --check-compatible baseline.json candidate.json --vary-field threads \
+  --require-field model_revision --require-field input_revision
+```
+
+The Python API accepts `vary_fields=["threads"]`. A nonempty list/tuple selects
+the explicit `controlled-fields-v1` policy. Repeat `--vary-field NAME` for multiple
+settings. Supported names are the configuration fields listed above **except
+`protocol`**. Nested paths, environment fields and unknown names are errors.
+Omitting the option, or supplying an empty API list/tuple, preserves the strict
+policy and its existing report shape.
+
+Declared fields must be present and valid in **both** reports; they are included
+in `required_fields` automatically. Only their equality check is relaxed. Missing
+values, including fields absent from both reports, remain incompatibilities.
+Declaring a field does not require it to change: unchanged values are accepted.
+You may also list the same field in `required_fields`; presence is still required
+but an explicitly permitted value change is allowed.
+
+The result adds sorted `vary_fields` and a `permitted_differences` list using the
+same field/reason shape as `differences`, without copying raw values. Declared
+value changes go in `permitted_differences`; missing fields and all other changes
+stay in `differences` and fail compatibility. Duplicate declarations are collapsed.
+The workload, warm-up/repeat counts, host environment and configuration protocol
+must still match. Both reports undergo full saved-report validation first.
+
+This is an allowlist of experimental variables, **not** an automatic fair-comparison
+policy, performance gate or significance test. Pin and require all relevant fixed
+settings, review the declared variables, and retain original reports to inspect
+their values. Multiple variables may confound attribution; the tool does not infer
+causality. It cannot verify that caller-reported settings were actually applied.
+Exit codes remain 0 for policy-compatible metadata, 1 for incompatible metadata,
+and 2 for invalid inputs/options. No workload executes in this mode.
+
 Exit codes for other modes: 0 demo completed or saved report validated, 2 invalid settings/report
 or file error. No memory, energy,
 throughput, model-quality or full hardware-identification claims are made.
