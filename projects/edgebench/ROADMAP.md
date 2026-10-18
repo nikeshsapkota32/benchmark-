@@ -17,6 +17,10 @@
   reported, and protocol/environment checks remain strict. Experiments still
   require human review of controlled variables and omitted metadata.
 - Add repeatable workload adapters with loading excluded from inference timing.
+- Implemented: offline descriptive latency comparisons after strict or
+  controlled-fields compatibility checks, with recomputed summaries and signed
+  millisecond deltas. Incompatible reports produce no numeric comparisons;
+  performance gating and statistical significance remain separate future work.
 - Run on actual Raspberry Pi hardware when access exists; record temperature,
   power mode, runtime versions and repeatability before publishing comparisons.
 - Add platform-aware resource measurement with explicit units and limitations.

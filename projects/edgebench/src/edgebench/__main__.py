@@ -5,42 +5,47 @@ import platform
 from pathlib import Path
 import sys
 
-from . import benchmark, check_compatibility, validate_report
+from . import benchmark, check_compatibility, compare_reports, validate_report
 from .report import reject_constant, unique_object
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Measure a synthetic CPU workload, validate reports or check metadata compatibility.")
+    parser = argparse.ArgumentParser(description="Measure a synthetic CPU workload, validate reports or compare saved timings.")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--demo", action="store_true",
                         help="measure SHA-256 of 1 MiB; this is not model inference")
     mode.add_argument("--validate", type=Path, metavar="REPORT", help="check a saved JSON report without running a workload")
     mode.add_argument("--check-compatible", nargs=2, type=Path, metavar=("BASELINE", "CANDIDATE"),
                       help="check saved reports for matching measurement settings")
+    mode.add_argument("--compare", nargs=2, type=Path, metavar=("BASELINE", "CANDIDATE"),
+                      help="describe latency changes after checking saved-report compatibility")
     parser.add_argument("--require-field", action="append", default=[], metavar="NAME",
-                        help="require an additional configuration field in compatibility mode; repeat as needed")
+                        help="require an additional configuration field in either comparison mode; repeat as needed")
     parser.add_argument("--vary-field", action="append", default=[], metavar="NAME",
                         help="permit a named configuration setting to differ; requires both values; repeat as needed")
     parser.add_argument("--warmups", type=int)
     parser.add_argument("--repeats", type=int)
     args = parser.parse_args(argv)
-    if args.require_field and args.check_compatible is None:
-        parser.error("--require-field requires --check-compatible")
-    if args.vary_field and args.check_compatible is None:
-        parser.error("--vary-field requires --check-compatible")
-    if args.check_compatible is not None:
+    comparison_paths = args.check_compatible if args.check_compatible is not None else args.compare
+    if args.require_field and comparison_paths is None:
+        parser.error("--require-field requires --check-compatible or --compare")
+    if args.vary_field and comparison_paths is None:
+        parser.error("--vary-field requires --check-compatible or --compare")
+    if comparison_paths is not None:
         if args.warmups is not None or args.repeats is not None:
             parser.error("--warmups and --repeats require --demo")
         try:
             reports = [json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object,
-                                  parse_constant=reject_constant) for path in args.check_compatible]
-            result = check_compatibility(*reports, required_fields=args.require_field,
-                                         vary_fields=args.vary_field)
+                                  parse_constant=reject_constant) for path in comparison_paths]
+            compare = check_compatibility if args.check_compatible is not None else compare_reports
+            result = compare(*reports, required_fields=args.require_field,
+                             vary_fields=args.vary_field)
         except (OSError, ValueError) as exc:
             print(f"edgebench: {exc}", file=sys.stderr)
             return 2
         print(json.dumps(result, indent=2, allow_nan=False))
-        return 0 if result["compatible"] else 1
+        compatibility = result if args.check_compatible is not None else result["compatibility"]
+        return 0 if compatibility["compatible"] else 1
     if args.validate is not None:
         if args.warmups is not None or args.repeats is not None:
             parser.error("--warmups and --repeats require --demo")
