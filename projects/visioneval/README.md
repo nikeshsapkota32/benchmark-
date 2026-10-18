@@ -143,14 +143,37 @@ denominator remains total target digits, not record count. BenchGuard checks
 sample-ID sets independently of record order.
 
 The exported protocol string is compact, key-sorted, ASCII-escaped JSON with
-`export: "visioneval-benchguard-v1"`, `kind`, the original `protocol`, and the
-explicit `response_policy` (including `strict`). This prevents accidental
+`export: "visioneval-benchguard-v2"`, `kind`, the original `protocol`, the
+explicit `response_policy` (including `strict`), and `ground_truth_sha256`.
+This prevents accidental
 comparisons across evaluator kinds or response policies even if the caller's
 protocol was not updated. Model identifiers may differ across a comparison.
 Pin dataset revisions and include prompt, sampling and inference settings in
-the original protocol; the exporter cannot verify that metadata or detect
-changed targets behind reused IDs/revisions. Exported scores are deterministic
+the original protocol; the exporter cannot verify that metadata. Exported scores are deterministic
 aggregates, not statistical significance estimates.
+
+The ground-truth fingerprint detects changed targets behind reused IDs and
+dataset revisions, even when the aggregate scores stay the same. For arithmetic
+it also pins the ordered operands and operator, so different problems with the
+same answer are not treated as the same evaluation set. Input record ordering,
+model name, predictions and extra record fields do not affect the fingerprint.
+IDs and digit targets are preserved exactly, including Unicode IDs and leading
+zeros. No Unicode normalization is applied.
+
+The SHA-256 input is ASCII-encoded, key-sorted compact JSON (separators `,` and
+`:`; `ensure_ascii=True`) containing `schema_version: 1`, `kind`, and `records`
+sorted by their ID strings. Each digit record contains only `id` and `target`.
+Each arithmetic record contains `id`, `target`, `operands` and `operator`;
+all arithmetic integers are represented using Python's lowercase `hex()` string
+format, including `0x` and any leading minus sign. This avoids decimal conversion
+limits for large integers. This hash identifies reported ground truth, not the
+underlying images, input data, provenance or correctness of labels. It is not
+encryption and does not make small, guessable labels private.
+
+Protocol v2 exports intentionally do not compare with older v1 exports. Re-export
+both baseline and candidate with the same version; do not strip the fingerprint
+to bypass a mismatch. The BenchGuard input `schema_version` remains 1, and the
+normal VisionEval JSON reports and metric definitions are unchanged.
 
 Unlike the normal report, **exports contain raw sample IDs**. They omit targets,
 predictions, operands and extra record fields, but are not anonymized. Use stable

@@ -51,7 +51,9 @@ class BenchGuardExportTests(unittest.TestCase):
         data["protocol"] = 'prompt="नमस्ते"\nseed=42'
         strict = to_benchguard(data)
         parsed = json.loads(strict["protocol"])
-        self.assertEqual(parsed, {"export": "visioneval-benchguard-v1", "kind": "digits",
+        fingerprint = parsed.pop("ground_truth_sha256")
+        self.assertRegex(fingerprint, r"^[0-9a-f]{64}$")
+        self.assertEqual(parsed, {"export": "visioneval-benchguard-v2", "kind": "digits",
                                   "protocol": data["protocol"], "response_policy": "strict"})
         numeric = to_benchguard(data, response_policy="numeric-text-v1")
         self.assertNotEqual(strict["protocol"], numeric["protocol"])
