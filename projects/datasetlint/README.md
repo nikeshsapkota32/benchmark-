@@ -1,6 +1,6 @@
 # DatasetLint
 
-Check a small text dataset for reused IDs and exact duplicate text within or
+Check a text dataset for reused IDs and exact duplicate text within or
 across named splits. Runs offline with Python 3.10+ and no runtime dependencies.
 
 ```sh
@@ -64,7 +64,47 @@ cover every input byte and retained findings keep their original file/line
 locations. Invalid later records or empty later splits still cause exit 2 with
 no partial report. Limiting findings bounds the retained finding list, **not**
 the ID/text indexes, total input size or scan time. JSON-object mode still loads
-the entire dataset; this is not a bounded-memory duplicate detection backend.
+the entire dataset. For disk-backed indexes, explicitly select the SQLite backend.
+
+## Optional disk-backed duplicate indexes
+
+Use JSONL input and SQLite indexes when keeping every unique ID/text in Python
+dictionaries is undesirable:
+
+```sh
+datasetlint --split train=train.jsonl --split test=test.jsonl \
+  --index-backend sqlite --max-findings 100
+```
+
+Both APIs accept `index_backend="sqlite"`; the default is `"memory"`. The default
+does not create temporary storage. SQLite uses Python's standard-library `sqlite3`
+module; custom Python builds without that module cannot use this backend.
+
+Only index storage changes. Reports (including JSONL source hashes), finding
+order, first-occurrence locations, text policies, field mappings, validation and
+exit codes are identical between backends. Exact keys are stored as binary values,
+not lossy hashes or case-insensitive SQL text, preserving Python string equality
+including embedded NULs and escaped surrogate code points. All later records
+still validate, including when `--max-findings 0` retains no findings. Database
+errors abort without a partial report.
+
+Each invocation creates a fresh private temporary directory under Python's system
+temporary location. The database contains **record IDs, matching text keys and
+split names**, without encryption. Matching text may be normalized under the
+selected policy. Review whether writing those values to temporary storage is
+acceptable for your dataset. The connection is closed and directory removed on
+normal completion or handled exceptions; abrupt process/machine termination may
+leave files behind. Removal is not secure erasure. No source file is modified,
+and the database is not a reusable cache or resumable scan.
+
+SQLite moves the growing unique-key index out of Python dictionaries and uses a
+2 MiB suggested page cache, but this is **not a total memory guarantee**. Individual
+records/lines, retained findings, split/file bookkeeping, SQLite and OS caches
+still consume memory. Use `--max-findings` to cap retained findings and JSONL to
+avoid loading the whole dataset. The temporary location may itself be RAM-backed;
+available temporary storage and SQLite's limits also constrain the scan. This
+backend trades storage/I/O for index memory; no speed or peak-memory result is
+claimed. JSON-object mode still holds the full supplied dataset in memory.
 
 ## Explicit field names
 
@@ -150,8 +190,9 @@ reports and diagnostics; review them before sharing.
 
 All files must validate before any report is printed. A malformed later line
 returns exit 2 even if earlier records already revealed overlap. JSONL avoids
-loading all input records, but retains ID/text matching indexes and findings in
-memory; memory usage still grows with unique content and finding count.
+loading all input records. By default it retains ID/text matching indexes and
+findings in memory; memory usage grows with unique content and finding count.
+SQLite indexes and a finding limit are separate opt-ins described above.
 
 JSONL reports also include `source_sha256`, mapping each split name to the
 SHA-256 of the exact file bytes consumed by the parser. Hashing happens in the
@@ -170,6 +211,6 @@ Exit codes: 0 clean, 1 duplicate/overlap findings, 2 malformed input/file error.
 An exact match is a reason to investigate leakage, not proof that leakage has
 occurred. The tool cannot find paraphrases, image duplicates or train/test
 contamination absent from these files. The original JSON-object input loads the
-whole dataset. Both input modes retain the duplicate indexes in memory.
+whole dataset. Both input modes use in-memory duplicate indexes by default.
 
 MIT licensed. Developed with AI assistance. All shipped examples are synthetic.

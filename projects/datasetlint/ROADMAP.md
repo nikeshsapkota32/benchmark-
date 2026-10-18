@@ -11,8 +11,11 @@
 - Implemented: opt-in finding limits with full totals and explicit truncation;
   validation and source hashing continue through all records. Zero retained
   findings never suppresses a failing audit. Default reports are unchanged.
-- Consider disk-backed duplicate indexes and finding output for large datasets;
-  the JSONL reader alone does not provide bounded-memory duplicate detection.
+- Implemented: opt-in temporary SQLite exact-match indexes for JSON and JSONL,
+  preserving reports and validation while moving unique keys out of Python
+  dictionaries. Pair JSONL with a finding limit; total memory is not guaranteed.
+- Next: measure memory/I/O tradeoffs on documented synthetic workloads before
+  making resource claims; consider streaming finding output separately.
 - Implemented: SHA-256 hashes of the exact JSONL bytes consumed during validation.
 - Add format adapters only with documented licensed fixtures.
 - Evaluate approximate duplicate detection separately; never silently equate a
