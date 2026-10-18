@@ -12,6 +12,9 @@
   with either run are rejected rather than silently overriding metadata.
 - Markdown report: implemented via `--format markdown`, with exact-byte input
   SHA-256 hashes, comparison outcomes and escaped run/metric metadata.
+- Machine-readable audit: implemented via `--format json-audit`, with a versioned
+  envelope containing run metadata, parsed policies and exact-byte source hashes.
+  Default JSON remains unchanged; all formats use the same checks and exit codes.
 - Sample-ID fingerprints: implemented for optional per-result `sample_ids`,
   detecting changes hidden by equal sample counts. Content verification remains
   outside the scope of this identity check.

@@ -1,8 +1,27 @@
-"""Deterministic Markdown for already-validated comparisons."""
+"""Deterministic reports for already-validated comparisons."""
 
+from dataclasses import asdict
 import string
 
 from .core import failed
+
+
+def build_json_audit(baseline, candidate, rows, source_hashes, tolerance,
+                     metric_tolerances, metric_directions):
+    """Build a versioned audit envelope without input paths or raw sample IDs."""
+    return {
+        "schema_version": 1,
+        "report_type": "benchguard-comparison",
+        "passed": not failed(rows),
+        "results": [asdict(row) for row in rows],
+        "runs": {label: {field: data[field] for field in ("model", "dataset_revision", "protocol")}
+                 for label, data in (("baseline", baseline), ("candidate", candidate))},
+        "policy": {"tolerance": tolerance,
+                   "metric_tolerances": dict(sorted(metric_tolerances.items())),
+                   "metric_directions": dict(sorted(metric_directions.items()))},
+        "source_sha256": {label.replace(" ", "_"): source_hashes[label]
+                          for label in sorted(source_hashes)},
+    }
 
 
 def _cell(value):
