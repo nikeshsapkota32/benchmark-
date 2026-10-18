@@ -12,6 +12,10 @@
 - Implemented: opt-in BenchGuard saved-run exports with metric directions,
   stable sample IDs and versioned protocol encoding that pins kind and response
   policy. Input metadata remains caller-supplied, not verified provenance.
+- Implemented: export protocol v2 fingerprints targets associated with sample IDs
+  and arithmetic operands/operator, independent of record order. Re-export both
+  sides when migrating from v1. Image/input-content verification remains outside
+  this reported-ground-truth check.
 - Implemented: opt-in arithmetic operator breakdown with counts, missing
   predictions and exact match for each operator present. Overall scoring and
   BenchGuard exports remain aggregate only.
