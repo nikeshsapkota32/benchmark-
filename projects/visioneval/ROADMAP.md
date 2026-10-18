@@ -3,6 +3,8 @@
 - Implemented: digit exact match and edit-based error rate, integer arithmetic
   scoring with target consistency checks, missing-prediction accounting, CLI,
   and opt-in per-example status/error counts without copying raw record content.
+- Implemented: strict file parsing rejects nonstandard NaN/Infinity constants,
+  including in ignored fields, before normal reporting or BenchGuard export.
 - Implemented: opt-in `numeric-text-v1` whole-response parsing, preserving digit
   leading zeros, recording the policy and rejecting ambiguous text without a
   partial report. Strict typed predictions remain the default.
