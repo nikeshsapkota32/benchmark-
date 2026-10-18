@@ -17,6 +17,12 @@ object. Each split is a nonempty list of objects with nonblank string `id` and
 exactly: whitespace, case and Unicode are not normalized. Duplicate JSON keys
 are errors. Text-only whitespace matching is an explicit opt-in described below.
 
+Both JSON and JSONL file parsing reject the nonstandard unquoted constants
+`NaN`, `Infinity` and `-Infinity`, including inside otherwise ignored fields.
+Such input exits 2 without a partial report. Quoted strings such as `"NaN"`
+remain ordinary strings. This is a file-syntax check, not validation of every
+extra field's meaning; the in-memory `inspect()` API still ignores extra fields.
+
 ```json
 {"schema_version":1,"splits":{
   "train":[{"id":"a","text":"Example sentence"}],

@@ -3,6 +3,8 @@
 - Implemented: schema validation, exact ID/text duplicates, split overlap, JSON
   CLI reports, exit codes and standard-library tests. JSONL files are read one
   record at a time with deterministic file/line locations and strict errors.
+- JSON and JSONL file parsers consistently reject nonstandard NaN/Infinity
+  constants even in ignored fields; quoted strings and valid extras are unchanged.
 - Implemented: explicit top-level ID/text field selection for JSON and JSONL,
   with mapping metadata and unchanged default reports.
 - Implemented: opt-in `ascii-whitespace-v1` text matching with explicit policy
