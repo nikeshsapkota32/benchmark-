@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "experiment": "datasetlint-synthetic-index-profile-v1",
+  "environment": {
+    "system": "Linux",
+    "release": "6.18.55",
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "sqlite": "3.53.1"
+  },
+  "workload": {
+    "unique_train_records": 50000,
+    "test_records": 5000,
+    "test_selection": "every tenth train record, starting at zero",
+    "text_bytes": 512,
+    "max_findings": 0,
+    "input_bytes": {
+      "train": 27338890,
+      "test": 2733889
+    }
+  },
+  "measurement": {
+    "time": "perf_counter around inspect_jsonl; excludes interpreter startup and input generation",
+    "memory": "Linux process-lifetime ru_maxrss in bytes; includes interpreter and imports",
+    "storage": "Python tempfile default; filesystem and OS caches not characterized",
+    "order": "alternating first backend; fresh process per run; no cache flushing"
+  },
+  "script_sha256": "33b558d87317cf3e390c50c5f8e88a5554ce257d9bb28adcb1f1a97ddcc2b779",
+  "implementation_sha256": {
+    "datasetlint": "93b4e7dd0ab5ff52b85f12f657eb56997ec00443adb93af06570354f59ae6cd1",
+    "datasetlint.indexes": "666206e455065d3a98624c088d376b82a0601c94e4f918e4e19256cf6794737c",
+    "datasetlint.jsonl": "c0d24b658e9bdc4c8a521433623284ec4ed73c0388f674014a45744dc5f1db68"
+  },
+  "validation_report": {
+    "schema_version": 1,
+    "passed": false,
+    "counts": {
+      "test": 5000,
+      "train": 50000
+    },
+    "findings": [],
+    "max_findings": 0,
+    "total_findings": 10000,
+    "findings_truncated": true,
+    "source_sha256": {
+      "test": "fac89a58b73af8d53a4180fe33f7ed6f0e1ae1f70cc36aadb91080154e56ccc6",
+      "train": "fe2c875985ccf4f5b2e3e6dd0e4f4d1f50a48e21c59532e9cb61ec57b85e63fa"
+    }
+  },
+  "runs": [
+    {
+      "backend": "memory",
+      "elapsed_seconds": 0.2865762600049493,
+      "peak_rss_bytes": 56176640,
+      "trial": 1
+    },
+    {
+      "backend": "sqlite",
+      "elapsed_seconds": 0.7035250949993497,
+      "peak_rss_bytes": 15073280,
+      "trial": 1
+    },
+    {
+      "backend": "sqlite",
+      "elapsed_seconds": 0.6924492210018798,
+      "peak_rss_bytes": 15073280,
+      "trial": 2
+    },
+    {
+      "backend": "memory",
+      "elapsed_seconds": 0.3112951069997507,
+      "peak_rss_bytes": 56184832,
+      "trial": 2
+    },
+    {
+      "backend": "memory",
+      "elapsed_seconds": 0.31064496799808694,
+      "peak_rss_bytes": 56176640,
+      "trial": 3
+    },
+    {
+      "backend": "sqlite",
+      "elapsed_seconds": 0.7245587380020879,
+      "peak_rss_bytes": 15073280,
+      "trial": 3
+    }
+  ]
+}

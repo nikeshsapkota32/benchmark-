@@ -103,8 +103,53 @@ records/lines, retained findings, split/file bookkeeping, SQLite and OS caches
 still consume memory. Use `--max-findings` to cap retained findings and JSONL to
 avoid loading the whole dataset. The temporary location may itself be RAM-backed;
 available temporary storage and SQLite's limits also constrain the scan. This
-backend trades storage/I/O for index memory; no speed or peak-memory result is
-claimed. JSON-object mode still holds the full supplied dataset in memory.
+backend trades storage/I/O for index memory. JSON-object mode still holds the
+full supplied dataset in memory. One synthetic characterization is below; it
+does not establish resource requirements for your dataset or machine.
+
+## Reproduce a synthetic resource profile (Linux)
+
+From this package's directory, after installation (or with `PYTHONPATH=src`):
+
+```sh
+python scripts/profile_indexes.py --records 50000 --text-bytes 512 --trials 3
+```
+
+This generates 50,000 unique train records and 5,000 deliberately repeated test
+records in temporary files. Every text is 512 ASCII bytes. It runs each backend
+in a fresh process with `max_findings=0`, alternating which backend runs first.
+It verifies complete report equality and the expected 10,000 ID/text findings
+before printing a JSON resource report. Failures produce no partial report.
+No model inference, external dataset, private research or network is involved.
+
+The output records input hashes/sizes, script and implementation hashes, Python/
+SQLite/OS metadata, raw trial measurements and the validation report. A successful
+profile exits 0 even though the deliberately duplicated dataset has `passed: false`.
+Invalid parameters, worker failures, timeouts or unequal reports exit 2. Each
+worker has a 300-second timeout. Smaller defaults use 10,000 train records.
+
+Example actually measured on **2026-10-18 UTC**, Linux x86_64, Python 3.12.14,
+SQLite 3.53.1; [all six raw trials and hashes](docs/profiling/linux-synthetic-2026-10-18.json):
+
+| Backend | Peak process RSS, range (MiB) | Scan time, range (seconds) |
+| --- | --- | --- |
+| Memory | 53.57–53.58 | 0.287–0.311 |
+| SQLite | 14.38–14.38 | 0.692–0.725 |
+
+RSS is Linux `ru_maxrss` converted from KiB to bytes (MiB here means 1,048,576
+bytes). It is the **process-lifetime** peak, including interpreter/import memory,
+not an isolated index allocation. Timing covers `inspect_jsonl`, including
+validation, hashing and index cleanup, but excludes input generation and process
+startup. No performance threshold is tested in CI. The script rejects non-Linux
+platforms rather than guessing their RSS units.
+
+This single-host, small synthetic case shows a memory/time trade-off, not a
+universal speedup or memory guarantee. OS caches are not flushed, background load
+is uncontrolled, and the temporary filesystem was not characterized (it may be
+RAM-backed). Process RSS does not include all filesystem-cache or host memory
+costs. Disk space, disk I/O counts, hardware identity and Raspberry Pi performance
+were **not** measured. Profile your own representative workloads before choosing
+a backend; do not extrapolate these numbers to model inference.
 
 ## Explicit field names
 
