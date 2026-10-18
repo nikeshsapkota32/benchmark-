@@ -1,6 +1,6 @@
 """Read strict UTF-8 JSONL without materializing all input records."""
 
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 import hashlib
 import json
 from pathlib import Path
@@ -40,6 +40,14 @@ def _records(stream, path, digest=None):
         yield row
 
 
+def _file_records(path, digest):
+    # Opening is deferred until the scanner reaches this split. Normal
+    # exhaustion closes the file before the next split starts; closing the
+    # generator also closes it when record validation aborts outside _records.
+    with path.open("rb") as stream:
+        yield from _records(stream, str(path), digest)
+
+
 def inspect_jsonl(splits, *, id_field="id", text_field="text", text_policy="exact", max_findings=None,
                   index_backend="memory"):
     """Map split names to paths; return findings only after every file validates."""
@@ -54,7 +62,7 @@ def inspect_jsonl(splits, *, id_field="id", text_field="text", text_policy="exac
         raise ValueError("split paths must be strings or path-like objects") from None
     with ExitStack() as stack:
         digests = {name: hashlib.sha256() for name in sorted(paths)}
-        streams = {name: _records(stack.enter_context(paths[name].open("rb")), str(paths[name]), digests[name])
+        streams = {name: stack.enter_context(closing(_file_records(paths[name], digests[name])))
                    for name in sorted(paths)}
         report = _inspect(streams, sources={name: str(path) for name, path in paths.items()},
                           id_field=id_field, text_field=text_field, text_policy=text_policy,
