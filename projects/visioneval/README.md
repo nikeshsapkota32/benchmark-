@@ -32,6 +32,31 @@ Exact-match accuracy reports correct answers against the validated targets.
 No expression strings are executed. It does not assess reasoning steps or
 separate recognition errors from arithmetic errors.
 
+## Inspect arithmetic accuracy by operator
+
+```sh
+visioneval examples/arithmetic.json --by-operator
+```
+
+The Python API is `evaluate(data, by_operator=True)`. This adds an
+`operator_breakdown` object to arithmetic JSON reports. For each operator
+present in the input, in `+`, `-`, `*` order, it records `samples`, `correct`,
+`missing` and `exact_match`. Each operator's exact match is its correct count
+divided by all records using that operator, including missing predictions.
+Operators with no records are omitted; a zero score is not reported for an
+unevaluated operator. The counts across operators add up to the report's
+overall counts. The overall exact match remains correct predictions divided
+by **all** records, not an unweighted average of operator scores.
+
+This option works with `--details` and `--response-policy numeric-text-v1`.
+Invalid responses or inconsistent arithmetic targets still abort with exit 2
+and no partial report. The default report shape is unchanged; `--by-operator`
+requires arithmetic input and cannot be combined with `--format benchguard`.
+The BenchGuard export continues to contain only overall arithmetic exact match.
+The breakdown contains counts and rates, not record IDs, operands, predictions,
+targets or explanation text. It is a diagnostic for the supplied mix of problems,
+not a normalized comparison across datasets with different operator mixes.
+
 ## Opt in to whole-response numeric text
 
 The default `strict` policy retains the types and exact matching above. For
