@@ -231,6 +231,14 @@ The converter uses the harness's `higher_is_better`, `n-samples.effective`,
 and settings. It also carries the recorded harness `git_hash`, original sample
 count and optional `task_hashes[task]` into a deterministic protocol string.
 Changes to any of those fields make the two converted runs incompatible.
+When recorded, `system_instruction`, `system_instruction_sha`, `chat_template`,
+`chat_template_sha` and `fewshot_as_multiturn` are preserved too. Changing or
+removing one of these fields blocks comparison, even if the caller's protocol
+label is unchanged. Missing fields remain distinct from explicit `null`; text
+fields accept strings or null, and multi-turn accepts only booleans or null.
+Recorded hashes are preserved, not verified against the associated text.
+The protocol uses adapter version `benchguard-lmeval-v2`; regenerate both run
+files if upgrading from an earlier adapter version.
 See the upstream [EvalResults schema](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/result_schema.py)
 and [aggregate writer](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/loggers/evaluation_tracker.py)
 for the source format. This adapter targets that aggregate format, not the
@@ -242,8 +250,10 @@ before sharing; the output embeds task configuration and may contain local
 paths or sensitive metadata. The recorded revision/hash is metadata, not proof
 of provenance. Without per-sample IDs or a task hash, equal sample counts do
 not establish equal sample identity. `--protocol` must explicitly account for
-settings not captured in the saved aggregate, including chat template and any
-model invocation details that affect comparability. Example names above are
+settings not captured in the saved aggregate, including an unrecorded chat
+template and model invocation details that affect comparability. Absent prompt
+settings do not establish that no template or system instruction was used.
+Example names above are
 illustrative, not measured benchmark claims.
 
 ## What this does not prove

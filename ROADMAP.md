@@ -4,6 +4,11 @@
 - lm-evaluation-harness aggregate adapter: implemented for one explicitly
   selected task/filtered metric; preserves task version, few-shot, filter,
   counts, task config, settings and optional task hash, using synthetic tests.
+- Recorded chat/system-instruction fields now participate in compatibility,
+  including missing-versus-null distinctions. Schema/writer inspected at
+  [harness d6de816](https://github.com/EleutherAI/lm-evaluation-harness/blob/d6de81643928d653435c431bae19945d41d32520/lm_eval/result_schema.py)
+  on 2026-10-18. Synthetic regressions reproduce the previously ignored template
+  change; this is not yet validation against a real model export.
 - Next: validate with a suitably licensed real export and consider a
   per-sample JSONL option for sample identity; do not infer IDs from counts.
 - Add a LightEval adapter after validating current result schemas.

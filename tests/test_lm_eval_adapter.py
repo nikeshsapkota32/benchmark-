@@ -37,6 +37,72 @@ def convert(data=None, **changes):
 
 
 class LmEvalAdapterTests(unittest.TestCase):
+    def test_recorded_chat_settings_changes_block_comparison(self):
+        for key, before, after in (
+            ("system_instruction", "Answer briefly", "Explain your answer"),
+            ("system_instruction_sha", "hash-a", "hash-b"),
+            ("chat_template", "template A", "template B"),
+            ("chat_template_sha", "hash-a", "hash-b"),
+            ("fewshot_as_multiturn", False, True),
+        ):
+            with self.subTest(key=key):
+                baseline, candidate = fixture(), fixture()
+                baseline[key], candidate[key] = before, after
+                with self.assertRaisesRegex(ValueError, "incompatible protocol"):
+                    compare(convert(baseline), convert(candidate))
+
+    def test_chat_settings_preserve_null_empty_and_missing(self):
+        baseline = convert()
+        self.assertEqual(json.loads(baseline["protocol"])["chat_settings"], {})
+        for key in ("system_instruction", "system_instruction_sha", "chat_template",
+                    "chat_template_sha", "fewshot_as_multiturn"):
+            with self.subTest(key=key):
+                data = fixture()
+                data[key] = None
+                run = convert(data)
+                self.assertEqual(json.loads(run["protocol"])["chat_settings"], {key: None})
+                with self.assertRaisesRegex(ValueError, "incompatible protocol"):
+                    compare(baseline, run)
+                data[key] = False if key == "fewshot_as_multiturn" else ""
+                with self.assertRaisesRegex(ValueError, "incompatible protocol"):
+                    compare(run, convert(data))
+
+    def test_identical_chat_settings_are_deterministic_and_allow_model_changes(self):
+        data = fixture()
+        data.update(system_instruction="Answer\nexactly: \u03c0", system_instruction_sha=None,
+                    chat_template="{{ messages }}", chat_template_sha="recorded-hash",
+                    fewshot_as_multiturn=False)
+        baseline = convert(data)
+        candidate = convert(dict(reversed(list(data.items()))), model="new@def")
+        self.assertEqual(baseline["protocol"], candidate["protocol"])
+        self.assertEqual(compare(baseline, candidate)[0].status, "pass")
+
+    def test_invalid_chat_setting_types_rejected(self):
+        for key in ("system_instruction", "system_instruction_sha", "chat_template",
+                    "chat_template_sha", "fewshot_as_multiturn"):
+            invalid = (0, 1, "false", [], {}) if key == "fewshot_as_multiturn" else (0, True, [], {})
+            for value in invalid:
+                with self.subTest(key=key, value=value):
+                    data = fixture()
+                    data[key] = value
+                    with self.assertRaisesRegex(ValueError, key):
+                        convert(data)
+
+    def test_cli_invalid_chat_metadata_produces_no_partial_output(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "export.json"
+            data = fixture()
+            data["fewshot_as_multiturn"] = 1
+            path.write_text(json.dumps(data), encoding="utf-8")
+            output, error = io.StringIO(), io.StringIO()
+            with redirect_stdout(output), redirect_stderr(error):
+                status = main([str(path), "--task", "toy", "--metric", "acc,none",
+                               "--model", "x", "--dataset-revision", "pin",
+                               "--protocol", "reviewed"])
+            self.assertEqual(status, 2)
+            self.assertEqual(output.getvalue(), "")
+            self.assertIn("fewshot_as_multiturn", error.getvalue())
+
     def test_converts_one_metric_and_ignores_stderr(self):
         run = convert()
         self.assertEqual(run["results"], [{"task": "toy", "metric": "acc,none",

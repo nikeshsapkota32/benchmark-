@@ -12,6 +12,23 @@ _EVAL_SETTINGS = (
     "limit", "gen_kwargs", "random_seed", "numpy_seed", "torch_seed",
     "fewshot_seed",
 )
+_CHAT_TEXT_FIELDS = (
+    "system_instruction", "system_instruction_sha", "chat_template", "chat_template_sha",
+)
+
+
+def _chat_settings(export):
+    """Preserve recorded prompt settings, including absence versus explicit null."""
+    settings = {}
+    for key in (*_CHAT_TEXT_FIELDS, "fewshot_as_multiturn"):
+        if key not in export:
+            continue
+        value = export[key]
+        expected = bool if key == "fewshot_as_multiturn" else str
+        if value is not None and not isinstance(value, expected):
+            raise ValueError(f"{key} must be {expected.__name__} or null when present")
+        settings[key] = value
+    return settings
 
 
 def _mapping_at(export, field, task):
@@ -77,12 +94,13 @@ def adapt(export, *, task, metric, model, dataset_revision, protocol):
     if task_hash is not None and (not isinstance(task_hash, str) or not task_hash.strip()):
         raise ValueError("task hash must be a nonempty string when present")
     metadata = {
-        "adapter": "benchguard-lmeval-v1", "caller_protocol": protocol,
+        "adapter": "benchguard-lmeval-v2", "caller_protocol": protocol,
         "harness_revision": harness_revision, "task": task, "task_version": version,
         "fewshot": fewshot, "filter": filter_name, "metric": name,
         "task_config": task_config, "original_samples": original,
         "task_hash": task_hash,
         "evaluation_settings": {key: settings[key] for key in _EVAL_SETTINGS},
+        "chat_settings": _chat_settings(export),
     }
     try:
         pinned_protocol = json.dumps(metadata, sort_keys=True, separators=(",", ":"),
