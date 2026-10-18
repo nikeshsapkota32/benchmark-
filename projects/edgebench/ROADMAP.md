@@ -6,6 +6,8 @@
   before measurement; the CLI demo records its actual synthetic settings.
 - Implemented: offline saved-report schema and summary-consistency validation
   through the API and `--validate`; validation does not establish provenance.
+- Implemented: reject async callbacks and awaitable/async-generator return values
+  instead of reporting coroutine creation as completed work. No event loop is run.
 - Implemented: `strict-metadata-v1` compatibility checks with required protocol,
   optional additional required fields and explicit missing/different diagnostics.
 - Next: reviewed policies for experiments that intentionally vary selected settings.

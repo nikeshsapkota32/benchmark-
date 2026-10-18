@@ -29,6 +29,29 @@ and after every operation, inside the timed region. Without it, operations must
 finish synchronously. Exceptions abort the run instead of reporting partial
 success. The callable's outputs are discarded; validate correctness separately.
 
+Both callbacks must be synchronous Python callables. Coroutine functions and
+async-generator functions (including detectable partials, methods and async
+`__call__` objects) are rejected before any operation or synchronization runs.
+Return values are also checked after every call: a synchronous wrapper returning
+an awaitable or async generator raises `ValueError`, even during warm-up or the
+initial synchronization. No timing report is returned after such a failure.
+This prevents coroutine creation from being reported as completed inference.
+
+EdgeBench does not run an event loop or await results. Native coroutine results
+are closed to avoid unawaited-coroutine warnings; other awaitables/tasks are not
+awaited or cancelled. The caller remains responsible for outstanding work and
+cleanup. A late failure cannot undo earlier calls or their side effects. If a
+workload uses asynchronous device execution, provide a **synchronous blocking**
+completion callback; returning an awaitable from that callback is not sufficient.
+Ordinary return values are still discarded. These checks cannot detect every
+lazy result or hidden device queue, so completion remains the caller's contract.
+
+Per-call dispatch and return-value checks are inside the measured interval,
+along with the synchronization callback. Their overhead can matter for very
+short operations; this is completed-call latency under the harness, not a
+measurement of a device kernel in isolation. Keep harness versions and timing
+boundaries consistent when comparing results.
+
 The JSON report includes every measured duration in milliseconds, min/max,
 mean, median, p90/p95, warm-up/repeat counts, OS/release, machine architecture and
 Python version. Percentiles use nearest rank (`ceil(p*n)`); small samples give
