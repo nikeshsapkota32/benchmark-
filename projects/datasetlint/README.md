@@ -31,6 +31,41 @@ the same split is `duplicate_id`/`duplicate_text`, otherwise it is
 `overlap_id`/`overlap_text`. It reports repeated occurrences, not every pair.
 Split names remain visible in reports.
 
+## Limit finding output without skipping validation
+
+Highly duplicated data can produce more findings than records. Use
+`--max-findings N` to retain only the first N findings in the usual deterministic
+order, while still scanning and validating every record in every split:
+
+```sh
+datasetlint dataset.json --max-findings 100
+datasetlint --split train=train.jsonl --split test=test.jsonl --max-findings 0
+```
+
+Both Python APIs accept `max_findings=N`. N must be a nonnegative integer;
+zero returns summary metadata with an empty `findings` list. Omitting the option
+(or using `None` in Python) preserves the existing unlimited report shape.
+An explicit limit adds three fields to the report:
+
+| Field | Meaning |
+| --- | --- |
+| `max_findings` | Requested maximum number of retained findings |
+| `total_findings` | All duplicate/overlap occurrences found, including omitted findings |
+| `findings_truncated` | Whether any findings were omitted from the list |
+
+The total counts findings, not affected records: a repeated ID and repeated text
+in the same record count separately. `passed` and exit status depend on the full
+total, not the retained list. In particular, `--max-findings 0` still exits 1
+when findings exist. A clean report has `total_findings: 0` and
+`findings_truncated: false`, even with a zero limit.
+
+The limit works with custom field names and text policies. JSONL hashes still
+cover every input byte and retained findings keep their original file/line
+locations. Invalid later records or empty later splits still cause exit 2 with
+no partial report. Limiting findings bounds the retained finding list, **not**
+the ID/text indexes, total input size or scan time. JSON-object mode still loads
+the entire dataset; this is not a bounded-memory duplicate detection backend.
+
 ## Explicit field names
 
 For exports using other keys, select the ID and text fields without rewriting

@@ -16,6 +16,8 @@ def main(argv=None):
     parser.add_argument("--text-field", default="text", help="top-level record key for text (default: text)")
     parser.add_argument("--text-policy", choices=TEXT_POLICIES, default="exact",
                         help="text matching policy; IDs always match exactly (default: exact)")
+    parser.add_argument("--max-findings", type=int, metavar="N",
+                        help="retain at most N findings while scanning all records; 0 keeps only totals")
     args = parser.parse_args(argv)
     if (args.dataset is None) == (args.split is None):
         parser.error("provide either a JSON dataset or one or more --split NAME=PATH options")
@@ -30,11 +32,11 @@ def main(argv=None):
                     raise ValueError("duplicate split name")
                 splits[name] = path
             report = inspect_jsonl(splits, id_field=args.id_field, text_field=args.text_field,
-                                   text_policy=args.text_policy)
+                                   text_policy=args.text_policy, max_findings=args.max_findings)
         else:
             dataset = json.loads(args.dataset.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
             report = inspect(dataset, id_field=args.id_field, text_field=args.text_field,
-                             text_policy=args.text_policy)
+                             text_policy=args.text_policy, max_findings=args.max_findings)
     except (OSError, ValueError) as exc:
         print(f"datasetlint: {exc}", file=sys.stderr)
         return 2

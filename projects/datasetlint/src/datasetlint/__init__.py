@@ -7,9 +7,10 @@ TEXT_POLICIES = ("exact", "ascii-whitespace-v1")
 _ASCII_WHITESPACE = re.compile(r"[ \t\r\n\v\f]+")
 
 
-def inspect(dataset, *, id_field="id", text_field="text", text_policy="exact"):
+def inspect(dataset, *, id_field="id", text_field="text", text_policy="exact", max_findings=None):
     _validate_fields(id_field, text_field)
     _validate_text_policy(text_policy)
+    _validate_max_findings(max_findings)
     if not isinstance(dataset, dict) or type(dataset.get("schema_version")) is not int or dataset["schema_version"] != 1:
         raise ValueError("schema_version must be integer 1")
     splits = dataset.get("splits")
@@ -17,7 +18,13 @@ def inspect(dataset, *, id_field="id", text_field="text", text_policy="exact"):
     for split, rows in splits.items():
         if not isinstance(rows, list) or not rows:
             raise ValueError(f"split {split!r} must contain a nonempty list")
-    return _inspect(splits, id_field=id_field, text_field=text_field, text_policy=text_policy)
+    return _inspect(splits, id_field=id_field, text_field=text_field,
+                    text_policy=text_policy, max_findings=max_findings)
+
+
+def _validate_max_findings(max_findings):
+    if max_findings is not None and (type(max_findings) is not int or max_findings < 0):
+        raise ValueError("max_findings must be a nonnegative integer or None")
 
 
 def _validate_text_policy(text_policy):
@@ -39,9 +46,11 @@ def _validate_splits(splits):
         raise ValueError("split names must be nonempty strings")
 
 
-def _inspect(splits, sources=None, *, id_field="id", text_field="text", text_policy="exact"):
+def _inspect(splits, sources=None, *, id_field="id", text_field="text", text_policy="exact",
+             max_findings=None):
     """Scan each iterable once; sources map JSONL indices to physical lines."""
     seen_ids, seen_texts, findings, counts = {}, {}, [], {}
+    total_findings = 0
     for split in sorted(splits):
         rows = splits[split]
         counts[split] = 0
@@ -56,6 +65,9 @@ def _inspect(splits, sources=None, *, id_field="id", text_field="text", text_pol
                 if role == "text" and text_policy == "ascii-whitespace-v1":
                     value = _ASCII_WHITESPACE.sub(" ", value.strip(" \t\r\n\v\f"))
                 if value in seen:
+                    total_findings += 1
+                    if max_findings is not None and len(findings) >= max_findings:
+                        continue
                     previous_split, previous_index = seen[value]
                     findings.append({"code": f"duplicate_{role}" if split == previous_split else f"overlap_{role}",
                                      "split": split, "index": index,
@@ -70,7 +82,10 @@ def _inspect(splits, sources=None, *, id_field="id", text_field="text", text_pol
         if counts[split] == 0:
             where = sources[split] if sources else repr(split)
             raise ValueError(f"{where}: split must contain at least one record")
-    report = {"schema_version": 1, "passed": not findings, "counts": counts, "findings": findings}
+    report = {"schema_version": 1, "passed": total_findings == 0, "counts": counts, "findings": findings}
+    if max_findings is not None:
+        report.update(max_findings=max_findings, total_findings=total_findings,
+                      findings_truncated=total_findings > len(findings))
     if (id_field, text_field) != ("id", "text"):
         report["fields"] = {"id": id_field, "text": text_field}
     if text_policy != "exact":

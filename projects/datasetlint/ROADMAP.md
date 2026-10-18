@@ -8,6 +8,9 @@
 - Implemented: opt-in `ascii-whitespace-v1` text matching with explicit policy
   metadata. IDs and source hashes stay exact; default reports remain unchanged.
 - Any broader normalization needs a separately versioned, reviewed policy.
+- Implemented: opt-in finding limits with full totals and explicit truncation;
+  validation and source hashing continue through all records. Zero retained
+  findings never suppresses a failing audit. Default reports are unchanged.
 - Consider disk-backed duplicate indexes and finding output for large datasets;
   the JSONL reader alone does not provide bounded-memory duplicate detection.
 - Implemented: SHA-256 hashes of the exact JSONL bytes consumed during validation.
