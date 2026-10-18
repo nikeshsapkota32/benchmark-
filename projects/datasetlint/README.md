@@ -232,6 +232,14 @@ JSONL input modes cannot be combined. Paths may contain `=`; quote paths with
 spaces as needed. The Python API is `datasetlint.jsonl.inspect_jsonl`, accepting
 a dictionary of split names to paths.
 
+Files are opened and scanned one at a time in sorted split-name order, so the
+number of simultaneously open input files does not grow with the number of
+splits. The current file is closed before the next opens, including on handled
+parse, record-validation or read failures. SQLite may use separate database
+file descriptors; this is not a bound on all descriptors in the process.
+File existence/read errors are discovered when that split is reached, not in
+an upfront check of every path. Keep all source files stable for the whole scan.
+
 Files are read one record at a time. Findings retain zero-based indices and add
 `path`, `line`, `first_path` and `first_line`; line numbers are one-based physical
 lines. Blank lines, invalid UTF-8/JSON, duplicate JSON keys and empty files are
