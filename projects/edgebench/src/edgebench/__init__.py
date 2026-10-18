@@ -6,6 +6,7 @@ import time
 
 from .configuration import snapshot
 from .compatibility import check_compatibility
+from .comparison import compare_reports
 from .report import summarize, validate_report
 
 

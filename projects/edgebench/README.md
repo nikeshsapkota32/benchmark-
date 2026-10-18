@@ -215,6 +215,42 @@ causality. It cannot verify that caller-reported settings were actually applied.
 Exit codes remain 0 for policy-compatible metadata, 1 for incompatible metadata,
 and 2 for invalid inputs/options. No workload executes in this mode.
 
+## Compare saved latency summaries
+
+```sh
+edgebench --compare baseline.json candidate.json \
+  --require-field model_revision --require-field input_revision
+# For a reviewed thread-count experiment, also add: --vary-field threads
+```
+
+The API `compare_reports(baseline, candidate, required_fields=(), vary_fields=())`,
+imported from `edgebench`, validates both saved reports and applies the same
+strict or controlled-fields compatibility policy described above. It never
+executes the workload. `--check-compatible` retains its existing output shape.
+
+The new comparison envelope contains `schema_version: 1`,
+`report_type: "edgebench-comparison"`, `unit: "ms"`, the complete policy result
+under `compatibility`, and a `metrics` list. For compatible reports, that list
+contains `min`, `max`, `mean`, `median`, `p90` and `p95` in that order. Each row
+includes `baseline`, `candidate` and `delta_ms` (candidate minus baseline).
+Positive deltas mean increased latency; negative deltas mean reduced latency.
+Values are recomputed from raw durations rather than the saved, possibly rounded
+summaries. Zero timings are supported; no ratios or percentages are calculated.
+
+For incompatible metadata, `metrics` is empty and the compatibility diagnostics
+explain why no timing comparison was made. Malformed inputs produce exit 2 and
+no partial stdout report. Exit 1 means incompatible metadata. Exit 0 means a
+comparison was produced, **even when every latency increased**: there is no
+performance threshold, pass/fail judgment, statistical test or causal claim.
+Small repeat counts and noisy measurements still limit interpretation.
+
+Results do not copy raw durations or workload, configuration and environment
+values. Timing summaries themselves may be sensitive; review before sharing.
+Keep the original reports and experimental protocol. Matching metadata cannot
+verify physical hardware identity or prove a fair or reproducible experiment.
+`--require-field` and `--vary-field` work in both comparison modes; `--warmups`
+and `--repeats` remain demo-only. Output is deterministic for identical inputs.
+
 Exit codes for other modes: 0 demo completed or saved report validated, 2 invalid settings/report
 or file error. No memory, energy,
 throughput, model-quality or full hardware-identification claims are made.
