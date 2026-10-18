@@ -12,7 +12,10 @@
   callers must explicitly consume streaming work within the timed callback.
 - Implemented: `strict-metadata-v1` compatibility checks with required protocol,
   optional additional required fields and explicit missing/different diagnostics.
-- Next: reviewed policies for experiments that intentionally vary selected settings.
+- Implemented: opt-in `controlled-fields-v1` policy for explicitly varied
+  configuration fields; both values remain required, permitted changes are
+  reported, and protocol/environment checks remain strict. Experiments still
+  require human review of controlled variables and omitted metadata.
 - Add repeatable workload adapters with loading excluded from inference timing.
 - Run on actual Raspberry Pi hardware when access exists; record temperature,
   power mode, runtime versions and repeatability before publishing comparisons.

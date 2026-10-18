@@ -19,18 +19,23 @@ def main(argv=None):
                       help="check saved reports for matching measurement settings")
     parser.add_argument("--require-field", action="append", default=[], metavar="NAME",
                         help="require an additional configuration field in compatibility mode; repeat as needed")
+    parser.add_argument("--vary-field", action="append", default=[], metavar="NAME",
+                        help="permit a named configuration setting to differ; requires both values; repeat as needed")
     parser.add_argument("--warmups", type=int)
     parser.add_argument("--repeats", type=int)
     args = parser.parse_args(argv)
     if args.require_field and args.check_compatible is None:
         parser.error("--require-field requires --check-compatible")
+    if args.vary_field and args.check_compatible is None:
+        parser.error("--vary-field requires --check-compatible")
     if args.check_compatible is not None:
         if args.warmups is not None or args.repeats is not None:
             parser.error("--warmups and --repeats require --demo")
         try:
             reports = [json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object,
                                   parse_constant=reject_constant) for path in args.check_compatible]
-            result = check_compatibility(*reports, required_fields=args.require_field)
+            result = check_compatibility(*reports, required_fields=args.require_field,
+                                         vary_fields=args.vary_field)
         except (OSError, ValueError) as exc:
             print(f"edgebench: {exc}", file=sys.stderr)
             return 2

@@ -9,7 +9,7 @@ without changing their code. No PyPI packages have been published.
 | Project | Working first version | Next milestone |
 | --- | --- | --- |
 | DatasetLint | JSON/JSONL duplicate checks, bounded findings, field mapping, source hashes and opt-in ASCII-whitespace matching | Disk-backed indexes and reviewed format adapters |
-| EdgeBench | Synchronous-call timing with async/generator-result rejection, saved-report validation and metadata checks | Controlled-variable policies and hardware runs |
+| EdgeBench | Synchronous-call timing with async/generator-result rejection, saved-report validation and explicit controlled-variable policies | Reviewed workload adapters and hardware runs |
 | VisionEval | Saved digit/arithmetic scoring, operator breakdown, numeric parsing and ground-truth-fingerprinted BenchGuard exports | Reviewed format adapters and sample-level uncertainty |
 
 Fixtures are synthetic; tests are not model-quality or hardware benchmark results.
