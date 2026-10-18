@@ -16,9 +16,11 @@ def edit_distance(a, b):
     return previous[-1]
 
 
-def evaluate(data, *, include_details=False, response_policy="strict"):
+def evaluate(data, *, include_details=False, response_policy="strict", by_operator=False):
     if type(include_details) is not bool:
         raise ValueError("include_details must be a boolean")
+    if type(by_operator) is not bool:
+        raise ValueError("by_operator must be a boolean")
     if response_policy not in ("strict", "numeric-text-v1"):
         raise ValueError("response_policy must be strict or numeric-text-v1")
     if not isinstance(data, dict) or type(data.get("schema_version")) is not int or data["schema_version"] != 1:
@@ -29,11 +31,14 @@ def evaluate(data, *, include_details=False, response_policy="strict"):
     kind = data.get("kind")
     if kind not in ("digits", "arithmetic"):
         raise ValueError("kind must be digits or arithmetic")
+    if by_operator and kind != "arithmetic":
+        raise ValueError("by_operator requires arithmetic predictions")
     rows = data.get("records")
     if not isinstance(rows, list) or not rows:
         raise ValueError("records must be a nonempty list")
     seen, correct, missing, edits, digits = set(), 0, 0, 0, 0
     details = []
+    operator_counts = {op: {"samples": 0, "correct": 0, "missing": 0} for op in ("+", "-", "*")} if by_operator else None
     for index, row in enumerate(rows):
         if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"].strip():
             raise ValueError(f"record {index} needs a nonempty string id")
@@ -69,6 +74,11 @@ def evaluate(data, *, include_details=False, response_policy="strict"):
         is_correct = prediction == target
         missing += is_missing
         correct += is_correct
+        if by_operator:
+            counts = operator_counts[op]
+            counts["samples"] += 1
+            counts["correct"] += is_correct
+            counts["missing"] += is_missing
         if include_details:
             detail = {"index": index,
                       "status": "missing" if is_missing else "correct" if is_correct else "incorrect"}
@@ -82,6 +92,10 @@ def evaluate(data, *, include_details=False, response_policy="strict"):
     if kind == "digits":
         report.update({"digit_edit_errors": edits, "target_digits": digits,
                        "character_error_rate": edits / digits})
+    if by_operator:
+        report["operator_breakdown"] = {
+            op: {**counts, "exact_match": counts["correct"] / counts["samples"]}
+            for op, counts in operator_counts.items() if counts["samples"]}
     if include_details:
         report["details"] = details
     if response_policy != "strict":

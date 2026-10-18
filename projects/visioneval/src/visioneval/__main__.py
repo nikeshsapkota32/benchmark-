@@ -21,6 +21,8 @@ def main(argv=None):
     parser.add_argument("predictions", type=Path)
     parser.add_argument("--details", action="store_true",
                         help="include per-record indices and outcomes, without raw answers or IDs")
+    parser.add_argument("--by-operator", action="store_true",
+                        help="include counts and exact match for each present arithmetic operator")
     parser.add_argument("--response-policy", choices=("strict", "numeric-text-v1"), default="strict",
                         help="explicit prediction parsing policy (default: strict)")
     parser.add_argument("--format", choices=("json", "benchguard"), default="json",
@@ -28,6 +30,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.format == "benchguard" and args.details:
         parser.error("--details cannot be combined with --format benchguard")
+    if args.format == "benchguard" and args.by_operator:
+        parser.error("--by-operator cannot be combined with --format benchguard")
     try:
         data = json.loads(args.predictions.read_text(encoding="utf-8"),
                           object_pairs_hook=unique_object)
@@ -35,7 +39,7 @@ def main(argv=None):
             report = to_benchguard(data, response_policy=args.response_policy)
         else:
             report = evaluate(data, include_details=args.details,
-                              response_policy=args.response_policy)
+                              response_policy=args.response_policy, by_operator=args.by_operator)
     except (OSError, ValueError) as exc:
         print(f"visioneval: {exc}", file=sys.stderr)
         return 2

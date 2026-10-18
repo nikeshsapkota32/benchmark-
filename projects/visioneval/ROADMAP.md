@@ -12,4 +12,7 @@
 - Implemented: opt-in BenchGuard saved-run exports with metric directions,
   stable sample IDs and versioned protocol encoding that pins kind and response
   policy. Input metadata remains caller-supplied, not verified provenance.
+- Implemented: opt-in arithmetic operator breakdown with counts, missing
+  predictions and exact match for each operator present. Overall scoring and
+  BenchGuard exports remain aggregate only.
 - Evaluate paired uncertainty only with appropriate sample-level data.
