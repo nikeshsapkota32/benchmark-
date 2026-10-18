@@ -1,9 +1,11 @@
 # Development plan
 
 ## Next: real evaluation artifacts
-- Add an lm-evaluation-harness adapter using small, licensed upstream fixtures.
-- Preserve task version, few-shot settings, filter and sample-count metadata.
-- Reject unsupported or ambiguous exports instead of silently guessing.
+- lm-evaluation-harness aggregate adapter: implemented for one explicitly
+  selected task/filtered metric; preserves task version, few-shot, filter,
+  counts, task config, settings and optional task hash, using synthetic tests.
+- Next: validate with a suitably licensed real export and consider a
+  per-sample JSONL option for sample identity; do not infer IDs from counts.
 - Add a LightEval adapter after validating current result schemas.
 
 ## More useful CI reports
