@@ -11,6 +11,10 @@
 - Implemented: opt-in `numeric-text-v1` whole-response parsing, preserving digit
   leading zeros, recording the policy and rejecting ambiguous text without a
   partial report. Strict typed predictions remain the default.
+- Implemented: the 1000-digit arithmetic response bound is independent of
+  Python's configurable integer-string limit in both text policies. Scoring
+  and exports retain signed values and leading-zero behavior without changing
+  global limits; JSON numeric literals retain decoder constraints.
 - Implemented: opt-in `numeric-text-count-v1` retains unparseable text responses
   in all scoring denominators, separates them from missing answers, and reports
   counts/rates overall, by operator and in BenchGuard exports. The versioned

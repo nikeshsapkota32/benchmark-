@@ -21,7 +21,10 @@ def numeric_text(prediction, kind, index, *, policy="numeric-text-v1"):
         raise UnparseableResponse(f"record {index}: {policy} requires one complete ASCII numeric answer")
     if kind == "digits":
         return text
-    # Bound conversion work before calling Python's integer parser.
+    # Keep the policy bound independent of Python's configurable int(str) limit.
     if len(digits) > 1000:
         raise UnparseableResponse(f"record {index}: {policy} arithmetic answer exceeds 1000 digits")
-    return int(text)
+    value = 0
+    for digit in digits:
+        value = value * 10 + (ord(digit) - ord("0"))
+    return -value if text[0] == "-" else value

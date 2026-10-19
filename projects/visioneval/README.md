@@ -102,6 +102,12 @@ Digit responses must contain only ASCII digits after trimming: `" 007\n"`
 becomes `"007"`, not `"7"`. Arithmetic responses allow one optional ASCII `+`
 or `-` followed by digits: `" +003 "` becomes integer 3 and `"-0"` becomes 0.
 Arithmetic response strings are limited to 1000 digits before integer conversion.
+This bound includes leading zeros and excludes the optional sign and trimmed
+ASCII whitespace. Both text policies accept valid responses within this bound
+even when Python's integer-string conversion limit is lower (for example,
+`PYTHONINTMAXSTRDIGITS=640`). VisionEval converts these validated digits without
+changing the interpreter's global limit. JSON numeric literals in input files,
+such as targets and operands, still obey the JSON decoder's integer limits.
 This is whole-response parsing, not a search for a plausible answer. Explanations,
 multiple answers, expressions, decimal/scientific notation, grouping separators,
 Markdown fences, Unicode digits and Unicode whitespace are rejected.
