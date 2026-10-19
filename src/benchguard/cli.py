@@ -24,7 +24,10 @@ def load(path):
 
 def _load_with_digest(path):
     content = Path(path).read_bytes()
-    data = json.loads(content.decode("utf-8"), object_pairs_hook=_unique_object)
+    try:
+        data = json.loads(content.decode("utf-8"), object_pairs_hook=_unique_object)
+    except RecursionError:
+        raise ValueError("JSON nesting exceeds parser limit") from None
     return data, hashlib.sha256(content).hexdigest()
 
 
