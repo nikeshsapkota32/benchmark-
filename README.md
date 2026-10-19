@@ -260,6 +260,9 @@ not establish equal sample identity. `--protocol` must explicitly account for
 settings not captured in the saved aggregate, including an unrecorded chat
 template and model invocation details that affect comparability. Absent prompt
 settings do not establish that no template or system instruction was used.
+Exports exceeding Python's JSON decoder nesting limit also exit 2, without a
+traceback or partial converted run. Supported nested task configuration is
+preserved in the protocol; no fixed nesting-depth guarantee is made.
 Example names above are
 illustrative, not measured benchmark claims.
 

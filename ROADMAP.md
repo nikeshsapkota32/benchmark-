@@ -11,6 +11,9 @@
   change; this is not yet validation against a real model export.
 - Next: validate with a suitably licensed real export and consider a
   per-sample JSONL option for sample identity; do not infer IDs from counts.
+- Main's decoder-limit handling is integrated into the adapter branch, with
+  entry-point regressions for rejected deep exports, supported nested metadata
+  and unexpected internal errors. Real-export validation remains outstanding.
 - Add a LightEval adapter after validating current result schemas.
 
 ## More useful CI reports
