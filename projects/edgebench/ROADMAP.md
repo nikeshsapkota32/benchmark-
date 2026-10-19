@@ -20,6 +20,11 @@
   reported, and protocol/environment checks remain strict. Experiments still
   require human review of controlled variables and omitted metadata.
 - Add repeatable workload adapters with loading excluded from inference timing.
+- Implemented first example: dependency-free dense linear classifier with
+  explicitly synthetic/untrained fixtures. Loading, validation, conversion and
+  exact-byte model/input hashing precede warm-up and measurement; the timed
+  boundary includes arithmetic, allocation, finiteness checks and argmax.
+  Optimized runtime adapters and model-quality validation remain future work.
 - Implemented: opt-in exact-byte input hashes for saved-report CLI comparisons,
   using the same reads for parsing and hashing without claiming provenance.
 - Implemented: offline descriptive latency comparisons after strict or
