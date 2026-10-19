@@ -39,11 +39,15 @@ def measure(paths, backend):
     if sys.platform != "linux":
         raise ValueError("resource profiling currently supports Linux only")
     import resource
+    before = resource.getrusage(resource.RUSAGE_SELF)
     started = time.perf_counter()
     report = jsonl.inspect_jsonl(paths, index_backend=backend, max_findings=0)
     elapsed = time.perf_counter() - started
-    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
+    after = resource.getrusage(resource.RUSAGE_SELF)
+    peak = after.ru_maxrss * 1024
     return {"backend": backend, "elapsed_seconds": elapsed, "peak_rss_bytes": peak,
+            "filesystem_operations": {"input": after.ru_inblock - before.ru_inblock,
+                                      "output": after.ru_oublock - before.ru_oublock},
             "report": report}
 
 
@@ -88,6 +92,7 @@ def profile(records=10000, text_bytes=512, trials=3):
                          "text_bytes": text_bytes, "max_findings": 0, "input_bytes": input_bytes},
             "measurement": {"time": "perf_counter around inspect_jsonl; excludes interpreter startup and input generation",
                             "memory": "Linux process-lifetime ru_maxrss in bytes; includes interpreter and imports",
+                            "io": "Linux RUSAGE_SELF ru_inblock/ru_oublock deltas around inspect_jsonl including cleanup; filesystem operation counters, not bytes or syscall counts",
                             "storage": "Python tempfile default; filesystem and OS caches not characterized",
                             "order": "alternating first backend; fresh process per run; no cache flushing"},
             "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
