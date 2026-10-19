@@ -69,11 +69,15 @@ unevaluated operator. The counts across operators add up to the report's
 overall counts. The overall exact match remains correct predictions divided
 by **all** records, not an unweighted average of operator scores.
 
-This option works with `--details` and `--response-policy numeric-text-v1`.
-Invalid responses or inconsistent arithmetic targets still abort with exit 2
-and no partial report. The default report shape is unchanged; `--by-operator`
+This option works with `--details` and either numeric-text response policy.
+The rejecting `numeric-text-v1` policy aborts on unparseable responses;
+`numeric-text-count-v1` instead adds `unparseable` and `unparseable_rate` to
+each operator's counts. Its rate uses all records for that operator, and its
+unparseable counts sum to the overall count. Invalid schema/types or inconsistent
+arithmetic targets always abort with exit 2 and no partial report.
+The default report shape is unchanged; `--by-operator`
 requires arithmetic input and cannot be combined with `--format benchguard`.
-The BenchGuard export continues to contain only overall arithmetic exact match.
+The BenchGuard export contains only overall metrics, never operator-specific ones.
 The breakdown contains counts and rates, not record IDs, operands, predictions,
 targets or explanation text. It is a diagnostic for the supplied mix of problems,
 not a normalized comparison across datasets with different operator mixes.
@@ -115,6 +119,51 @@ it in the caller-supplied `protocol` as well. This versioned policy is distinct
 from model accuracy. The bundled response example is synthetic, not inference
 output, and scores one correct answer and one missing answer out of two.
 
+### Count unparseable responses without dropping records
+
+For a saved response set that includes nonnumeric answers, select a separate
+policy explicitly:
+
+```sh
+visioneval examples/unparseable-responses.json --response-policy numeric-text-count-v1 --details
+```
+
+`evaluate(data, response_policy="numeric-text-count-v1")` uses **exactly the same
+whole-response grammar, ASCII trimming and 1000-digit arithmetic conversion
+limit** as `numeric-text-v1`. It does not search explanations for an answer.
+Instead of aborting on a nonblank string outside those rules, it retains the
+record and reports `unparseable` (count) and `unparseable_rate` (count divided by
+all records). An arithmetic string exceeding the conversion limit is also
+unparseable under this policy, even if it contains only digits.
+
+Null and ASCII-blank responses remain `missing`, not `unparseable`. Valid but
+wrong numeric answers are neither missing nor unparseable. Wrong prediction
+types (including integers in this text policy), malformed records, duplicate
+IDs, invalid targets and inconsistent arithmetic labels remain input errors;
+they never become counted response failures. All records must validate before
+any report or export is printed. Neither previous policy changes behavior.
+
+Unparseable responses earn zero exact-match credit. For digits, this versioned
+policy treats an unparseable response as **no extracted digit string**, charging
+one deletion per target digit for character error rate. It does not measure edit
+distance to the raw prose. All records and target digits remain in their usual
+denominators; no record is dropped, and no accuracy conditional on successful
+parsing is reported. Inspect the parse-failure rate alongside the score: this
+penalty is a declared evaluation convention, not evidence about the model's
+underlying recognition or reasoning ability.
+
+`--details` adds status `unparseable` for these records, without raw response
+text or IDs. For example, the synthetic example has one correct, one wrong,
+one missing and one unparseable answer: exact match and unparseable rate are
+both 0.25. Missing and unparseable counts are disjoint, not interchangeable.
+Even when the rate is zero, counting-policy reports include both new fields.
+
+BenchGuard exports add `unparseable_rate` with `higher_is_better: false`, all
+record IDs, and the full sample count. The exported protocol pins
+`numeric-text-count-v1`, so it cannot compare with either earlier policy even
+when scores match. Ground-truth hashing is unchanged. Keep both runs on the
+same explicit policy and retain the original responses for local inspection.
+
 ## Inspect per-example outcomes
 
 ```sh
@@ -124,7 +173,8 @@ visioneval examples/digits.json --details
 The Python equivalent is `evaluate(data, include_details=True)`. Default reports
 remain aggregate-only. With the option enabled, a `details` list follows input
 record order. Each entry has a zero-based `index` into the original `records`
-array and a `status`: `correct`, `incorrect` or `missing`. For digits, it also
+array and a `status`: `correct`, `incorrect` or `missing` (plus `unparseable`
+under the counting policy above). For digits, it also
 includes `digit_edit_errors` and `target_digits`. Those counts sum to the report's
 aggregate counts. Missing digit predictions (null or empty) count as deleting
 every target digit. Arithmetic details contain only index and status; integer
@@ -159,7 +209,9 @@ names are `visioneval/digits` and `visioneval/arithmetic`. Both export
 `exact_match` (higher is better); digits also export `character_error_rate`
 (lower is better, not clipped to 1). Every metric includes all evaluated record
 IDs as `sample_ids` and the number of records as `samples`, including missing
-predictions. For character error rate, `samples` still counts records; the score
+and, with `numeric-text-count-v1`, unparseable predictions. That policy also
+exports `unparseable_rate` (lower is better). For character error rate, `samples`
+still counts records; the score
 denominator remains total target digits, not record count. BenchGuard checks
 sample-ID sets independently of record order.
 
