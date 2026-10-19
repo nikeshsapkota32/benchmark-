@@ -37,8 +37,12 @@ def main(argv=None):
     if args.format == "benchguard" and args.by_operator:
         parser.error("--by-operator cannot be combined with --format benchguard")
     try:
-        data = json.loads(args.predictions.read_text(encoding="utf-8"),
-                          object_pairs_hook=unique_object, parse_constant=reject_constant)
+        contents = args.predictions.read_text(encoding="utf-8")
+        try:
+            data = json.loads(contents, object_pairs_hook=unique_object,
+                              parse_constant=reject_constant)
+        except RecursionError:
+            raise ValueError("JSON nesting exceeds parser limit") from None
         if args.format == "benchguard":
             report = to_benchguard(data, response_policy=args.response_policy)
         else:
