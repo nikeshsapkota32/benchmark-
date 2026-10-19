@@ -23,10 +23,14 @@ def main(argv=None):
                         help="require an additional configuration field in either comparison mode; repeat as needed")
     parser.add_argument("--vary-field", action="append", default=[], metavar="NAME",
                         help="permit a named configuration setting to differ; requires both values; repeat as needed")
+    parser.add_argument("--audit", action="store_true",
+                        help="include exact-byte input SHA-256 hashes in either comparison mode")
     parser.add_argument("--warmups", type=int)
     parser.add_argument("--repeats", type=int)
     args = parser.parse_args(argv)
     comparison_paths = args.check_compatible if args.check_compatible is not None else args.compare
+    if args.audit and comparison_paths is None:
+        parser.error("--audit requires --check-compatible or --compare")
     if args.require_field and comparison_paths is None:
         parser.error("--require-field requires --check-compatible or --compare")
     if args.vary_field and comparison_paths is None:
@@ -35,11 +39,18 @@ def main(argv=None):
         if args.warmups is not None or args.repeats is not None:
             parser.error("--warmups and --repeats require --demo")
         try:
-            reports = [json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object,
-                                  parse_constant=reject_constant) for path in comparison_paths]
+            reports, hashes = [], {}
+            for name, path in zip(("baseline", "candidate"), comparison_paths):
+                payload = path.read_bytes()
+                reports.append(json.loads(payload.decode("utf-8"), object_pairs_hook=unique_object,
+                                          parse_constant=reject_constant))
+                if args.audit:
+                    hashes[name] = hashlib.sha256(payload).hexdigest()
             compare = check_compatibility if args.check_compatible is not None else compare_reports
             result = compare(*reports, required_fields=args.require_field,
                              vary_fields=args.vary_field)
+            if args.audit:
+                result["source_sha256"] = hashes
         except (OSError, ValueError) as exc:
             print(f"edgebench: {exc}", file=sys.stderr)
             return 2

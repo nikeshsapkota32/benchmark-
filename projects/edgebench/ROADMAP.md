@@ -17,6 +17,8 @@
   reported, and protocol/environment checks remain strict. Experiments still
   require human review of controlled variables and omitted metadata.
 - Add repeatable workload adapters with loading excluded from inference timing.
+- Implemented: opt-in exact-byte input hashes for saved-report CLI comparisons,
+  using the same reads for parsing and hashing without claiming provenance.
 - Implemented: offline descriptive latency comparisons after strict or
   controlled-fields compatibility checks, with recomputed summaries and signed
   millisecond deltas. Incompatible reports produce no numeric comparisons;
