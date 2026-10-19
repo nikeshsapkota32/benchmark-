@@ -25,6 +25,11 @@ schema). This is a file-syntax check, not validation of the meaning of every
 extra field. The in-memory `evaluate()` and `to_benchguard()` APIs continue to
 ignore extra fields; scoring, response policies and export fingerprints are unchanged.
 
+Input nesting beyond the Python JSON decoder's limit also exits 2 with a concise
+error and no partial report or export. Supported nested extra fields remain
+ignored. The limit depends on the Python interpreter; VisionEval does not change
+its recursion settings or promise a fixed maximum depth or memory bound.
+
 For digits, target is a nonempty ASCII digit string. Prediction is an ASCII
 digit string (possibly empty) or null. Leading zeros matter. Exact-match accuracy
 counts whole correct strings. Character error rate is summed Levenshtein edit

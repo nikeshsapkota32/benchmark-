@@ -5,6 +5,9 @@
   and opt-in per-example status/error counts without copying raw record content.
 - Implemented: strict file parsing rejects nonstandard NaN/Infinity constants,
   including in ignored fields, before normal reporting or BenchGuard export.
+- Implemented: JSON decoder nesting-limit failures return input-error exit 2
+  without a traceback, partial report or export; supported nested extras remain
+  ignored. No fixed nesting limit or resource bound is implied.
 - Implemented: opt-in `numeric-text-v1` whole-response parsing, preserving digit
   leading zeros, recording the policy and rejecting ambiguous text without a
   partial report. Strict typed predictions remain the default.
