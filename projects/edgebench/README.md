@@ -105,6 +105,56 @@ preprocessing boundaries, power mode and other relevant settings in `protocol`.
 The CLI demo fills in Python/hashlib, the Python version, CPU, byte input and its
 1 MiB shape automatically. It has no model field because it performs no inference.
 
+## Run the tiny linear inference example
+
+From this project's checkout, after installing EdgeBench:
+
+```sh
+python examples/linear_classifier.py \
+  --model examples/synthetic-linear-model.json \
+  --input examples/synthetic-linear-input.json \
+  --warmups 3 --repeats 100 > linear-timing.json
+edgebench --validate linear-timing.json
+```
+
+The example computes one dense linear layer (`weights × input + bias`) followed
+by argmax, using only sequential Python arithmetic. Ties choose the first class
+index. The three-class, four-feature fixture is **synthetic and untrained**; it
+is not a digit-recognition model, a dataset, or an accuracy benchmark. This is a
+small executable inference-boundary example, not a proxy for optimized NumPy,
+TensorFlow Lite, ONNX or VLM performance. The example and fixture files are MIT
+licensed with this project. They live in the checkout, not in the installed wheel.
+
+Both files require integer `schema_version: 1`. The model contains only `weights`
+(a nonempty rectangular array, one row per class) and `bias` (one number per
+class); the input contains only `values` (one number per feature). Entries must
+be finite numbers, not booleans, and fit Python float range. Unknown/missing
+fields, mismatched dimensions, duplicate keys and invalid JSON are errors.
+Input files are read once, validated and converted to immutable float tuples
+**before** `benchmark()` starts. No file loading, parsing, hashing or conversion
+is inside warm-up or measured calls. Changing the files afterwards does not
+change the loaded operation.
+
+Each measured call includes multiplication, sequential summation, bias addition,
+logit-list allocation, finiteness checks and argmax, plus EdgeBench's usual
+dispatch/completion checks. Nonfinite computed logits abort without a partial
+report. The output class index is discarded by the harness; fixture correctness
+is tested separately. These tiny calls are especially sensitive to harness and
+Python overhead. Increase/review repeat counts and retain raw timings; do not
+interpret one run as statistical evidence or production inference throughput.
+
+The saved report records actual host metadata, Python implementation/version,
+CPU, Python-float arithmetic, input shape, batch size one, and a versioned timing
+protocol. `model_revision` and `input_revision` are `sha256:` hashes of the exact
+file bytes used for parsing, so even formatting changes alter identity. Hashes
+are not provenance or privacy protection. Paths, weights, inputs and predictions
+are not copied into the report. Review metadata before sharing and choose an
+output path distinct from either input. No thread setting is applied or inferred.
+
+Run on an actual Raspberry Pi to obtain Pi timings; running this command on
+another host produces only that host's measurements. There is no network,
+download, paid inference, automatic training or accuracy claim in the example.
+
 ## Validate a saved report
 
 ```sh
