@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 from . import TEXT_POLICIES, inspect
-from .jsonl import inspect_jsonl, unique_object, _reject_constant
+from .jsonl import inspect_jsonl, _loads
 from .indexes import INDEX_BACKENDS
 
 
@@ -38,8 +38,7 @@ def main(argv=None):
                                    text_policy=args.text_policy, max_findings=args.max_findings,
                                    index_backend=args.index_backend)
         else:
-            dataset = json.loads(args.dataset.read_text(encoding="utf-8"),
-                                 object_pairs_hook=unique_object, parse_constant=_reject_constant)
+            dataset = _loads(args.dataset.read_text(encoding="utf-8"))
             report = inspect(dataset, id_field=args.id_field, text_field=args.text_field,
                              text_policy=args.text_policy, max_findings=args.max_findings,
                              index_backend=args.index_backend)

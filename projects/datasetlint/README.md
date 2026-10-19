@@ -23,6 +23,15 @@ Such input exits 2 without a partial report. Quoted strings such as `"NaN"`
 remain ordinary strings. This is a file-syntax check, not validation of every
 extra field's meaning; the in-memory `inspect()` API still ignores extra fields.
 
+If JSON nesting exceeds the Python decoder's supported depth, both file modes
+return input-error exit 2 with no partial report, rather than an uncaught
+recursion traceback. JSONL diagnostics include the file and physical line;
+`inspect_jsonl()` raises `ValueError`. This also applies to ignored extra fields,
+which must be parsed before record validation. The supported depth depends on
+the Python interpreter; DatasetLint does not change its recursion limit or
+promise a fixed nesting, input-size or total-memory bound. Ordinary supported
+nested extras remain ignored, and the in-memory API is unchanged.
+
 ```json
 {"schema_version":1,"splits":{
   "train":[{"id":"a","text":"Example sentence"}],

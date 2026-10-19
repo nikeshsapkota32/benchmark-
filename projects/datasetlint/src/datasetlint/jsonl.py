@@ -22,6 +22,16 @@ def _reject_constant(value):
     raise ValueError("nonfinite JSON number")
 
 
+def _loads(payload):
+    try:
+        return json.loads(payload, object_pairs_hook=unique_object,
+                          parse_constant=_reject_constant)
+    except RecursionError:
+        # Keep parser resource failures within the normal input-error contract.
+        # Do not change the process recursion limit or expose decoder details.
+        raise ValueError("JSON nesting exceeds parser limit") from None
+
+
 def _records(stream, path, digest=None):
     for line_number, raw in enumerate(stream, 1):
         if digest is not None:
@@ -30,8 +40,7 @@ def _records(stream, path, digest=None):
             line = raw.decode("utf-8")
             if not line.strip():
                 raise ValueError("blank JSONL line")
-            row = json.loads(line, object_pairs_hook=unique_object,
-                             parse_constant=_reject_constant)
+            row = _loads(line)
         except (UnicodeError, ValueError) as exc:
             # Avoid reproducing raw records in diagnostics.
             reason = "invalid UTF-8" if isinstance(exc, UnicodeError) else (
