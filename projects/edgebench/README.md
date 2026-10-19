@@ -255,3 +255,26 @@ Exit codes for other modes: 0 demo completed or saved report validated, 2 invali
 or file error. No memory, energy,
 throughput, model-quality or full hardware-identification claims are made.
 MIT licensed. Developed with AI assistance.
+
+## Identify comparison inputs
+
+```sh
+edgebench --compare baseline.json candidate.json --audit
+edgebench --check-compatible baseline.json candidate.json --audit
+```
+
+`--audit` adds `source_sha256`, an object with `baseline` and `candidate` hashes,
+to either comparison output. Each SHA-256 identifies the exact bytes read for
+parsing that file, including whitespace, encoding and line endings. Files are
+read once each; equivalent JSON with different formatting has different hashes.
+The normal comparison result and exit code are unchanged. Incompatible valid
+reports still include both hashes; malformed inputs emit no partial audit.
+The flag works with `--require-field` and `--vary-field`, but is not accepted
+with `--demo` or `--validate`. Without it, output retains its existing shape.
+
+Audit output contains no file paths and does not add raw timings or metadata
+values. Keep original reports: hashes identify their bytes, not their origin,
+hardware identity, correctness or authenticity. They are not encryption.
+No workload runs. Redirect output to a path distinct from both inputs to avoid
+shell redirection truncating an input before the command starts. The Python
+comparison APIs operate on parsed data and do not attach source-file hashes.
