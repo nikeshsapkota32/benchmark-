@@ -137,6 +137,13 @@ aggressively rounded reports may fail. Even-sample medians avoid overflowing the
 sum of two large finite values. Duplicate JSON keys, NaN/Infinity constants,
 malformed UTF-8/JSON and missing files are errors. Reports are loaded into memory.
 
+Saved files exceeding Python's JSON decoder nesting limit return exit 2 without
+a traceback or partial report, including comparison and audit modes. Supported
+nested extra fields remain ignored; audit hashes still identify the exact file
+bytes. This limit depends on the interpreter: EdgeBench does not change recursion
+settings or promise a fixed depth or memory bound. Only decoder nesting failures
+are classified this way, not internal errors from validation or comparison.
+
 Passing validates internal consistency, not authenticity, hardware identity,
 statistical reliability, configuration compatibility or model correctness. A
 fabricated but self-consistent report can pass. Keep original measurements and
