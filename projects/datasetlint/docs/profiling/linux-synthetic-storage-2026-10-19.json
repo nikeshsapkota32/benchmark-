@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "experiment": "datasetlint-synthetic-index-profile-v1",
+  "environment": {
+    "system": "Linux",
+    "release": "6.18.55",
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "sqlite": "3.53.1"
+  },
+  "workload": {
+    "unique_train_records": 21,
+    "test_records": 3,
+    "test_selection": "every tenth train record, starting at zero",
+    "text_bytes": 64,
+    "max_findings": 0,
+    "input_bytes": {
+      "train": 2006,
+      "test": 287
+    }
+  },
+  "measurement": {
+    "time": "perf_counter around inspect_jsonl including storage observation and cleanup; excludes interpreter startup and input generation",
+    "memory": "Linux process-lifetime ru_maxrss in bytes; includes interpreter and imports",
+    "io": "Linux RUSAGE_SELF ru_inblock/ru_oublock deltas around inspect_jsonl including storage observation and cleanup; filesystem operation counters, not bytes or syscall counts",
+    "storage": "single snapshot after successful scan before close/rollback; main page_count * page_size includes buffered pages; file_bytes is stat size and allocated_bytes is st_blocks * 512 for main database and existing journal/wal/shm; excludes directories and other SQLite temporary files; no commit/flush; not peak or physical-device usage; null for memory backend or unavailable allocation counts; Python tempfile filesystem uncharacterized",
+    "order": "alternating first backend; fresh process per run; no cache flushing"
+  },
+  "script_sha256": "30711f6748bbc703793485d7ac5891314690916dfe8ecfe37f0050042f22d83c",
+  "implementation_sha256": {
+    "datasetlint": "93b4e7dd0ab5ff52b85f12f657eb56997ec00443adb93af06570354f59ae6cd1",
+    "datasetlint.indexes": "666206e455065d3a98624c088d376b82a0601c94e4f918e4e19256cf6794737c",
+    "datasetlint.jsonl": "c43ebf1c9d6db2dff862e5a99800a730de250b0be6209a66729f4269ac698359"
+  },
+  "validation_report": {
+    "schema_version": 1,
+    "passed": false,
+    "counts": {
+      "test": 3,
+      "train": 21
+    },
+    "findings": [],
+    "max_findings": 0,
+    "total_findings": 6,
+    "findings_truncated": true,
+    "source_sha256": {
+      "test": "bd5198701a13d51b4b5f11646a8910f166286626239cbb427eb033e2c3759fde",
+      "train": "a9b47a728f3ea5c60ab5a338ddcdb1c62ac4c72d57d7eb97375a68d1026e7c8f"
+    }
+  },
+  "runs": [
+    {
+      "backend": "memory",
+      "elapsed_seconds": 0.000647281005512923,
+      "peak_rss_bytes": 18481152,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 0
+      },
+      "index_storage": null,
+      "trial": 1
+    },
+    {
+      "backend": "sqlite",
+      "elapsed_seconds": 0.004828673001611605,
+      "peak_rss_bytes": 19255296,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 56
+      },
+      "index_storage": {
+        "observation": "after-successful-scan-before-close-v1",
+        "page_count": 2,
+        "page_size_bytes": 4096,
+        "logical_database_bytes": 8192,
+        "uncommitted_transaction": true,
+        "files": {
+          "database": {
+            "file_bytes": 8192,
+            "allocated_bytes": 8192
+          },
+          "journal": {
+            "file_bytes": 4616,
+            "allocated_bytes": 8192
+          }
+        },
+        "file_bytes": 12808,
+        "allocated_bytes": 16384
+      },
+      "trial": 1
+    }
+  ]
+}

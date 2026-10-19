@@ -28,7 +28,11 @@
 - Implemented: Linux filesystem input/output counter deltas around each profile
   scan, including cleanup, with documented units and valid zero observations.
   These are not byte counts, syscall counts or physical-device measurements.
-- Next: characterize disk space and representative workloads on more hosts;
+- Implemented: opt-in profiler snapshots of live SQLite logical page size and
+  main/sidecar file lengths and filesystem allocation, before close/rollback.
+  Sampling overhead and uncommitted/buffered-page limits are explicit. A snapshot
+  is not peak disk usage or capacity sizing; ordinary validation stays unchanged.
+- Next: representative workloads on more hosts and peak-storage characterization;
   consider streaming finding output separately. Do not generalize one host's RSS.
 - Implemented: SHA-256 hashes of the exact JSONL bytes consumed during validation.
 - Add format adapters only with documented licensed fixtures.
