@@ -6,6 +6,9 @@
   before measurement; the CLI demo records its actual synthetic settings.
 - Implemented: offline saved-report schema and summary-consistency validation
   through the API and `--validate`; validation does not establish provenance.
+- Implemented: saved-file JSON decoder nesting-limit failures return exit 2
+  without partial validation/comparison/audit output; supported extras and
+  exact-byte hashes are unchanged, with no global recursion-setting changes.
 - Implemented: reject async callbacks and awaitable/async-generator return values
   instead of reporting coroutine creation as completed work. No event loop is run.
 - Implemented: reject Python generator callbacks and generator return values;

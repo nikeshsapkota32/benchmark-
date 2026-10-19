@@ -9,6 +9,14 @@ from . import benchmark, check_compatibility, compare_reports, validate_report
 from .report import reject_constant, unique_object
 
 
+def _loads(contents):
+    try:
+        return json.loads(contents, object_pairs_hook=unique_object,
+                          parse_constant=reject_constant)
+    except RecursionError:
+        raise ValueError("JSON nesting exceeds parser limit") from None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Measure a synthetic CPU workload, validate reports or compare saved timings.")
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -42,8 +50,7 @@ def main(argv=None):
             reports, hashes = [], {}
             for name, path in zip(("baseline", "candidate"), comparison_paths):
                 payload = path.read_bytes()
-                reports.append(json.loads(payload.decode("utf-8"), object_pairs_hook=unique_object,
-                                          parse_constant=reject_constant))
+                reports.append(_loads(payload.decode("utf-8")))
                 if args.audit:
                     hashes[name] = hashlib.sha256(payload).hexdigest()
             compare = check_compatibility if args.check_compatible is not None else compare_reports
@@ -61,8 +68,7 @@ def main(argv=None):
         if args.warmups is not None or args.repeats is not None:
             parser.error("--warmups and --repeats require --demo")
         try:
-            report = json.loads(args.validate.read_text(encoding="utf-8"),
-                                object_pairs_hook=unique_object, parse_constant=reject_constant)
+            report = _loads(args.validate.read_text(encoding="utf-8"))
             validate_report(report)
         except (OSError, ValueError) as exc:
             print(f"edgebench: {exc}", file=sys.stderr)
