@@ -2,7 +2,7 @@
 
 import operator
 
-from .response import numeric_text
+from .response import RESPONSE_POLICIES, UnparseableResponse, numeric_text
 
 
 def edit_distance(a, b):
@@ -41,8 +41,9 @@ def evaluate(data, *, include_details=False, response_policy="strict", by_operat
         raise ValueError("include_details must be a boolean")
     if type(by_operator) is not bool:
         raise ValueError("by_operator must be a boolean")
-    if response_policy not in ("strict", "numeric-text-v1"):
-        raise ValueError("response_policy must be strict or numeric-text-v1")
+    if response_policy not in RESPONSE_POLICIES:
+        raise ValueError("response_policy must be " + ", ".join(RESPONSE_POLICIES))
+    count_unparseable = response_policy == "numeric-text-count-v1"
     if not isinstance(data, dict) or type(data.get("schema_version")) is not int or data["schema_version"] != 1:
         raise ValueError("schema_version must be integer 1")
     for name in ("model", "dataset_revision", "protocol"):
@@ -57,8 +58,12 @@ def evaluate(data, *, include_details=False, response_policy="strict", by_operat
     if not isinstance(rows, list) or not rows:
         raise ValueError("records must be a nonempty list")
     seen, correct, missing, edits, digits = set(), 0, 0, 0, 0
+    unparseable = 0
     details = []
     operator_counts = {op: {"samples": 0, "correct": 0, "missing": 0} for op in ("+", "-", "*")} if by_operator else None
+    if by_operator and count_unparseable:
+        for counts in operator_counts.values():
+            counts["unparseable"] = 0
     for index, row in enumerate(rows):
         if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"].strip():
             raise ValueError(f"record {index} needs a nonempty string id")
@@ -68,14 +73,21 @@ def evaluate(data, *, include_details=False, response_policy="strict", by_operat
         if "prediction" not in row:
             raise ValueError(f"record {index} needs prediction (use null for missing)")
         target, prediction = row.get("target"), row["prediction"]
-        if response_policy == "numeric-text-v1":
-            prediction = numeric_text(prediction, kind, index)
+        is_unparseable = False
+        if response_policy != "strict":
+            try:
+                prediction = numeric_text(prediction, kind, index, policy=response_policy)
+            except UnparseableResponse:
+                if not count_unparseable:
+                    raise
+                # Score as no extracted answer, but never conflate with missing.
+                prediction, is_unparseable = None, True
         if kind == "digits":
             if not isinstance(target, str) or not target or any(c not in "0123456789" for c in target):
                 raise ValueError("digit targets must be nonempty ASCII digit strings")
             if prediction is not None and (not isinstance(prediction, str) or any(c not in "0123456789" for c in prediction)):
                 raise ValueError("digit predictions must be ASCII digit strings or null")
-            is_missing = prediction is None or prediction == ""
+            is_missing = not is_unparseable and (prediction is None or prediction == "")
             record_edits = edit_distance(target, prediction or "")
             edits += record_edits
             digits += len(target)
@@ -90,18 +102,21 @@ def evaluate(data, *, include_details=False, response_policy="strict", by_operat
                 raise ValueError("arithmetic target disagrees with operands/operator")
             if prediction is not None and type(prediction) is not int:
                 raise ValueError("arithmetic prediction must be an integer or null")
-            is_missing = prediction is None
+            is_missing = not is_unparseable and prediction is None
         is_correct = prediction == target
         missing += is_missing
         correct += is_correct
+        unparseable += is_unparseable
         if by_operator:
             counts = operator_counts[op]
             counts["samples"] += 1
             counts["correct"] += is_correct
             counts["missing"] += is_missing
+            if count_unparseable:
+                counts["unparseable"] += is_unparseable
         if include_details:
             detail = {"index": index,
-                      "status": "missing" if is_missing else "correct" if is_correct else "incorrect"}
+                      "status": "unparseable" if is_unparseable else "missing" if is_missing else "correct" if is_correct else "incorrect"}
             if kind == "digits":
                 detail.update(digit_edit_errors=record_edits, target_digits=len(target))
             details.append(detail)
@@ -109,10 +124,16 @@ def evaluate(data, *, include_details=False, response_policy="strict", by_operat
               **{key: data[key] for key in ("model", "dataset_revision", "protocol")},
               "samples": len(rows), "correct": correct, "missing": missing,
               "exact_match": correct / len(rows)}
+    if count_unparseable:
+        report.update(unparseable=unparseable, unparseable_rate=unparseable / len(rows))
     if kind == "digits":
         report.update({"digit_edit_errors": edits, "target_digits": digits,
                        "character_error_rate": edits / digits})
     if by_operator:
+        if count_unparseable:
+            for counts in operator_counts.values():
+                if counts["samples"]:
+                    counts["unparseable_rate"] = counts["unparseable"] / counts["samples"]
         report["operator_breakdown"] = {
             op: {**counts, "exact_match": counts["correct"] / counts["samples"]}
             for op, counts in operator_counts.items() if counts["samples"]}

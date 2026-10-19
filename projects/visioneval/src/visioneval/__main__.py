@@ -5,6 +5,7 @@ import sys
 
 from . import evaluate
 from .export import to_benchguard
+from .response import RESPONSE_POLICIES
 
 
 def unique_object(pairs):
@@ -27,7 +28,7 @@ def main(argv=None):
                         help="include per-record indices and outcomes, without raw answers or IDs")
     parser.add_argument("--by-operator", action="store_true",
                         help="include counts and exact match for each present arithmetic operator")
-    parser.add_argument("--response-policy", choices=("strict", "numeric-text-v1"), default="strict",
+    parser.add_argument("--response-policy", choices=RESPONSE_POLICIES, default="strict",
                         help="explicit prediction parsing policy (default: strict)")
     parser.add_argument("--format", choices=("json", "benchguard"), default="json",
                         help="normal report or BenchGuard run with raw sample IDs (default: json)")

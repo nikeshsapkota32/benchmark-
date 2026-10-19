@@ -32,6 +32,8 @@ def to_benchguard(data, *, response_policy="strict"):
     metrics = [("exact_match", True)]
     if report["kind"] == "digits":
         metrics.append(("character_error_rate", False))
+    if response_policy == "numeric-text-count-v1":
+        metrics.append(("unparseable_rate", False))
     return {"schema_version": 1, "model": report["model"],
             "dataset_revision": report["dataset_revision"], "protocol": protocol,
             "results": [{"task": "visioneval/" + report["kind"], "metric": metric,

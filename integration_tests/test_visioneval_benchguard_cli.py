@@ -107,6 +107,32 @@ class VisionEvalBenchGuardCliTests(unittest.TestCase):
     def test_response_policy_changes_are_incompatible_even_when_scores_match(self):
         self.assert_incompatible(digits(), digits(), policy="numeric-text-v1")
 
+    def test_counting_policy_is_incompatible_with_rejecting_policy(self):
+        baseline = self.export("baseline", digits(), "numeric-text-v1")
+        candidate = self.export("candidate", digits(), "numeric-text-count-v1")
+        result = self.compare(baseline, candidate)
+        self.assertEqual((result.returncode, result.stdout), (2, ""))
+        self.assertIn("incompatible protocol", result.stderr)
+
+    def test_unparseable_rate_regression_is_visible_with_unchanged_accuracy(self):
+        before = digits()
+        before.update(kind="arithmetic", records=[
+            {"id": "a", "operands": [2, 3], "operator": "+", "target": 5, "prediction": "4"}])
+        after = deepcopy(before)
+        after["records"][0]["prediction"] = "synthetic explanation: 5"
+        baseline = self.export("baseline", before, "numeric-text-count-v1")
+        candidate = self.export("candidate", after, "numeric-text-count-v1")
+        result = self.compare(baseline, candidate)
+        self.assertEqual((result.returncode, result.stderr), (1, ""))
+        rows = {row["metric"]: row for row in json.loads(result.stdout)["results"]}
+        self.assertEqual(rows["exact_match"]["baseline"], 0.0)
+        self.assertEqual(rows["exact_match"]["candidate"], 0.0)
+        self.assertEqual(rows["unparseable_rate"]["baseline"], 0.0)
+        self.assertEqual(rows["unparseable_rate"]["candidate"], 1.0)
+        self.assertEqual(rows["unparseable_rate"]["status"], "regression")
+        self.assertEqual(rows["unparseable_rate"]["baseline_sample_fingerprint"],
+                         rows["unparseable_rate"]["candidate_sample_fingerprint"])
+
     def test_invalid_later_record_produces_no_partial_export(self):
         data = digits()
         data["records"][1]["target"] = "not-a-digit"

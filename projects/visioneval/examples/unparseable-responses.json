@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "model": "synthetic-example-not-inference",
+  "dataset_revision": "synthetic-fixture-v1",
+  "protocol": "whole-response-numeric-text-count-v1",
+  "kind": "arithmetic",
+  "records": [
+    {"id": "a", "operands": [3, 4], "operator": "+", "target": 7, "prediction": " +007\n"},
+    {"id": "b", "operands": [3, 4], "operator": "+", "target": 7, "prediction": "8"},
+    {"id": "c", "operands": [3, 4], "operator": "+", "target": 7, "prediction": null},
+    {"id": "d", "operands": [3, 4], "operator": "+", "target": 7, "prediction": "The answer is 7."}
+  ]
+}

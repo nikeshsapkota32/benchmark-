@@ -11,8 +11,12 @@
 - Implemented: opt-in `numeric-text-v1` whole-response parsing, preserving digit
   leading zeros, recording the policy and rejecting ambiguous text without a
   partial report. Strict typed predictions remain the default.
-- Next: reviewed format adapters; broader response policies require a defined
-  protocol and explicit accounting for unparseable responses, not answer guessing.
+- Implemented: opt-in `numeric-text-count-v1` retains unparseable text responses
+  in all scoring denominators, separates them from missing answers, and reports
+  counts/rates overall, by operator and in BenchGuard exports. The versioned
+  policy specifies no-extracted-answer penalties; no answer guessing is used.
+- Next: reviewed format adapters; any broader extraction grammar requires a
+  separate defined protocol and explicit unparseable-response accounting.
 - Review licenses before adding real handwritten-number fixtures or adapters.
 - Implemented: opt-in BenchGuard saved-run exports with metric directions,
   stable sample IDs and versioned protocol encoding that pins kind and response
