@@ -155,6 +155,51 @@ No cache flushing, filesystem synchronization or physical-device verification is
 performed. The report's `measurement.io` records these semantics. Older saved
 profiles lack these fields; missing counters mean unmeasured, not zero.
 
+### Temporary index storage snapshot
+
+New profiles include `index_storage` for every trial: `null` for the memory
+backend (no SQLite index), or a snapshot taken **after the successful scan but
+before the SQLite connection closes and its temporary directory is removed**.
+This is a single observation, not peak storage usage or a capacity guarantee.
+
+| Field | Meaning |
+| --- | --- |
+| `page_count`, `page_size_bytes` | SQLite's live main-database page count and page size |
+| `logical_database_bytes` | Their product, including buffered database pages; not physical file usage |
+| `uncommitted_transaction` | Whether the connection still has an open transaction at observation |
+| `files` | Present `database`, `journal`, `wal` and `shm` files, with file length and allocated bytes per role |
+| `file_bytes` | Sum of those files' `stat().st_size` values |
+| `allocated_bytes` | Sum of those files' Linux `st_blocks * 512`, or `null` if unavailable for any file |
+
+The observer uses read-only [SQLite PRAGMA queries](https://www.sqlite.org/pragma.html)
+and file metadata. It does not commit, flush, checkpoint or alter cache settings.
+Index inserts are normally uncommitted: buffered pages can make logical database
+size larger than the main file's length. A present zero-length or zero-allocation
+file is retained; absent optional sidecars are omitted. A missing main database
+or failed observation is an error, with no partial resource report. Older profiles
+without `index_storage` have no storage observation.
+
+The snapshot includes only the main database and its named journal/WAL/shared
+memory sidecars. It excludes directory metadata, anonymous/deleted files and any
+other [SQLite temporary files](https://www.sqlite.org/tempfiles.html). Allocation
+counts describe filesystem reporting, not physical-device writes, exclusive disk
+ownership, free space or durable storage. The temporary filesystem is uncharacterized
+and may be RAM-backed. No paths, index values or split names appear in this snapshot.
+
+Sampling and the index-wrapper overhead are included in scan elapsed time and
+filesystem counters. Interpreter/import memory remains part of process-lifetime
+RSS. These added costs mean new timings/RSS should not be treated as directly
+comparable to archived profiles from an older script. Source hashes identify the
+instrumented script. The profiling worker temporarily wraps the package's private
+index context and restores it on success or failure; use this script's isolated,
+synchronous workers, not concurrent `measure()` calls in a shared Python process.
+Ordinary DatasetLint scans and report schemas are unchanged.
+
+A [small 2026-10-19 verification](docs/profiling/linux-synthetic-storage-2026-10-19.json)
+records 21 unique train records, three repeated test records, 64-byte text and one
+trial per backend. Backend validation reports matched. This verifies the reporting
+path on the recorded Linux x86_64 host; it is not representative capacity sizing.
+
 A [2026-10-19 Linux x86_64 run](docs/profiling/linux-synthetic-io-2026-10-19.json)
 records three trials per backend with 50,000 train and 5,000 repeated test
 records (512-byte text). All six validation reports matched. Input counters were

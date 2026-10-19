@@ -1,6 +1,7 @@
 """Linux-only, synthetic resource characterization; no performance pass/fail gate."""
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 from pathlib import Path
@@ -10,9 +11,37 @@ import subprocess
 import sys
 import tempfile
 import time
+from unittest.mock import patch
 
 import datasetlint
 from datasetlint import indexes, jsonl
+
+
+def storage_snapshot(connection):
+    """Observe the live main database without committing or flushing its pages."""
+    database = Path(next(row[2] for row in connection.execute("PRAGMA database_list")
+                         if row[1] == "main"))
+    page_count = connection.execute("PRAGMA main.page_count").fetchone()[0]
+    page_size = connection.execute("PRAGMA main.page_size").fetchone()[0]
+    files = {}
+    for role, suffix in (("database", ""), ("journal", "-journal"), ("wal", "-wal"), ("shm", "-shm")):
+        try:
+            stat = Path(str(database) + suffix).stat()
+        except FileNotFoundError:
+            if role == "database":
+                raise
+            continue
+        blocks = getattr(stat, "st_blocks", None)
+        files[role] = {"file_bytes": stat.st_size,
+                       "allocated_bytes": None if blocks is None else blocks * 512}
+    allocated = [item["allocated_bytes"] for item in files.values()]
+    return {"observation": "after-successful-scan-before-close-v1",
+            "page_count": page_count, "page_size_bytes": page_size,
+            "logical_database_bytes": page_count * page_size,
+            "uncommitted_transaction": connection.in_transaction,
+            "files": files,
+            "file_bytes": sum(item["file_bytes"] for item in files.values()),
+            "allocated_bytes": None if any(value is None for value in allocated) else sum(allocated)}
 
 
 def write_synthetic(directory, records, text_bytes):
@@ -39,16 +68,31 @@ def measure(paths, backend):
     if sys.platform != "linux":
         raise ValueError("resource profiling currently supports Linux only")
     import resource
-    before = resource.getrusage(resource.RUSAGE_SELF)
-    started = time.perf_counter()
-    report = jsonl.inspect_jsonl(paths, index_backend=backend, max_findings=0)
-    elapsed = time.perf_counter() - started
-    after = resource.getrusage(resource.RUSAGE_SELF)
+    storage = None
+
+    @contextmanager
+    def observed_indexes(selected_backend):
+        nonlocal storage
+        with indexes.open_indexes(selected_backend) as pair:
+            yield pair
+            if selected_backend == "sqlite":
+                storage = storage_snapshot(pair[0].connection)
+
+    # Instrument only this synchronous profiling worker; ordinary scans retain
+    # their original API and reports. The context restores the hook on failures.
+    with patch.object(datasetlint, "open_indexes", observed_indexes):
+        before = resource.getrusage(resource.RUSAGE_SELF)
+        started = time.perf_counter()
+        report = jsonl.inspect_jsonl(paths, index_backend=backend, max_findings=0)
+        elapsed = time.perf_counter() - started
+        after = resource.getrusage(resource.RUSAGE_SELF)
+    if backend == "sqlite" and storage is None:
+        raise ValueError("SQLite storage observation was not captured")
     peak = after.ru_maxrss * 1024
     return {"backend": backend, "elapsed_seconds": elapsed, "peak_rss_bytes": peak,
             "filesystem_operations": {"input": after.ru_inblock - before.ru_inblock,
                                       "output": after.ru_oublock - before.ru_oublock},
-            "report": report}
+            "index_storage": storage, "report": report}
 
 
 def profile(records=10000, text_bytes=512, trials=3):
@@ -90,10 +134,10 @@ def profile(records=10000, text_bytes=512, trials=3):
             "workload": {"unique_train_records": records, "test_records": expected_test,
                          "test_selection": "every tenth train record, starting at zero",
                          "text_bytes": text_bytes, "max_findings": 0, "input_bytes": input_bytes},
-            "measurement": {"time": "perf_counter around inspect_jsonl; excludes interpreter startup and input generation",
+            "measurement": {"time": "perf_counter around inspect_jsonl including storage observation and cleanup; excludes interpreter startup and input generation",
                             "memory": "Linux process-lifetime ru_maxrss in bytes; includes interpreter and imports",
-                            "io": "Linux RUSAGE_SELF ru_inblock/ru_oublock deltas around inspect_jsonl including cleanup; filesystem operation counters, not bytes or syscall counts",
-                            "storage": "Python tempfile default; filesystem and OS caches not characterized",
+                            "io": "Linux RUSAGE_SELF ru_inblock/ru_oublock deltas around inspect_jsonl including storage observation and cleanup; filesystem operation counters, not bytes or syscall counts",
+                            "storage": "single snapshot after successful scan before close/rollback; main page_count * page_size includes buffered pages; file_bytes is stat size and allocated_bytes is st_blocks * 512 for main database and existing journal/wal/shm; excludes directories and other SQLite temporary files; no commit/flush; not peak or physical-device usage; null for memory backend or unavailable allocation counts; Python tempfile filesystem uncharacterized",
                             "order": "alternating first backend; fresh process per run; no cache flushing"},
             "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             "implementation_sha256": source_hashes,
