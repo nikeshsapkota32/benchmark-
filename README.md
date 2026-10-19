@@ -75,6 +75,13 @@ out-of-range JSON integers are input errors as well.
 Finite scores remain comparable even when their difference exceeds that range;
 the comparison preserves the tolerance boundary instead of overflowing.
 
+Run and policy files that exceed Python's JSON decoder nesting limit are input
+errors (exit 2), with no traceback or partial JSON/Markdown report. The `load()`
+helper raises `ValueError` for this condition. Supported nested extra run fields
+remain ignored by comparison; audit hashes still identify the exact file bytes.
+The limit is interpreter-dependent: BenchGuard does not change recursion settings
+or promise a fixed depth or memory bound.
+
 ### Pin metric directions independently
 
 Two runs can agree on an incorrect `higher_is_better` value. To catch that,
