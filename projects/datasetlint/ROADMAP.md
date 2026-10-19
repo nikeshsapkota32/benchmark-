@@ -8,6 +8,9 @@
   order are unchanged; later file errors still prevent any partial report.
 - JSON and JSONL file parsers consistently reject nonstandard NaN/Infinity
   constants even in ignored fields; quoted strings and valid extras are unchanged.
+- Decoder nesting-limit failures become normal input errors in both file modes,
+  with JSONL file/line diagnostics and no partial reports. No recursion-limit
+  changes or fixed resource bounds are implied.
 - Implemented: explicit top-level ID/text field selection for JSON and JSONL,
   with mapping metadata and unchanged default reports.
 - Implemented: opt-in `ascii-whitespace-v1` text matching with explicit policy
