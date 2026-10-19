@@ -143,6 +143,25 @@ profile exits 0 even though the deliberately duplicated dataset has `passed: fal
 Invalid parameters, worker failures, timeouts or unequal reports exit 2. Each
 worker has a 300-second timeout. Smaller defaults use 10,000 train records.
 
+Each new trial also includes `filesystem_operations: {"input": N, "output": N}`.
+These are Linux `RUSAGE_SELF` counter differences (`ru_inblock`, `ru_oublock`)
+sampled immediately around the scan, including index cleanup. They exclude
+input generation, interpreter startup and earlier process activity. The Linux
+[getrusage documentation](https://man7.org/linux/man-pages/man2/getrusage.2.html)
+defines these as filesystem input/output operation counters. They are not bytes,
+read/write syscall counts, disk-space measurements or device throughput.
+Zero is valid: caching and RAM-backed temporary storage can avoid counted I/O.
+No cache flushing, filesystem synchronization or physical-device verification is
+performed. The report's `measurement.io` records these semantics. Older saved
+profiles lack these fields; missing counters mean unmeasured, not zero.
+
+A [2026-10-19 Linux x86_64 run](docs/profiling/linux-synthetic-io-2026-10-19.json)
+records three trials per backend with 50,000 train and 5,000 repeated test
+records (512-byte text). All six validation reports matched. Input counters were
+zero in every trial; output counters were zero for memory and 59,456–59,464 for
+SQLite. These are observed counters on this host, not storage byte counts or a
+performance threshold. The artifact retains raw timings, RSS and source hashes.
+
 Example actually measured on **2026-10-18 UTC**, Linux x86_64, Python 3.12.14,
 SQLite 3.53.1; [all six raw trials and hashes](docs/profiling/linux-synthetic-2026-10-18.json):
 
@@ -162,8 +181,8 @@ This single-host, small synthetic case shows a memory/time trade-off, not a
 universal speedup or memory guarantee. OS caches are not flushed, background load
 is uncontrolled, and the temporary filesystem was not characterized (it may be
 RAM-backed). Process RSS does not include all filesystem-cache or host memory
-costs. Disk space, disk I/O counts, hardware identity and Raspberry Pi performance
-were **not** measured. Profile your own representative workloads before choosing
+costs. Disk space, filesystem-operation counts, hardware identity and Raspberry Pi
+performance were **not** measured in that archived profile. Profile your own representative workloads before choosing
 a backend; do not extrapolate these numbers to model inference.
 
 ## Explicit field names

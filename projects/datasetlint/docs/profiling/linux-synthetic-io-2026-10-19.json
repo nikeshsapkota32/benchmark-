@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "experiment": "datasetlint-synthetic-index-profile-v1",
+  "environment": {
+    "system": "Linux",
+    "release": "6.18.55",
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "sqlite": "3.53.1"
+  },
+  "workload": {
+    "unique_train_records": 50000,
+    "test_records": 5000,
+    "test_selection": "every tenth train record, starting at zero",
+    "text_bytes": 512,
+    "max_findings": 0,
+    "input_bytes": {
+      "train": 27338890,
+      "test": 2733889
+    }
+  },
+  "measurement": {
+    "time": "perf_counter around inspect_jsonl; excludes interpreter startup and input generation",
+    "memory": "Linux process-lifetime ru_maxrss in bytes; includes interpreter and imports",
+    "io": "Linux RUSAGE_SELF ru_inblock/ru_oublock deltas around inspect_jsonl including cleanup; filesystem operation counters, not bytes or syscall counts",
+    "storage": "Python tempfile default; filesystem and OS caches not characterized",
+    "order": "alternating first backend; fresh process per run; no cache flushing"
+  },
+  "script_sha256": "de47674b3510b7a8dc98b51884836d2da748f72bc62a9238f73c3dad699613f2",
+  "implementation_sha256": {
+    "datasetlint": "93b4e7dd0ab5ff52b85f12f657eb56997ec00443adb93af06570354f59ae6cd1",
+    "datasetlint.indexes": "666206e455065d3a98624c088d376b82a0601c94e4f918e4e19256cf6794737c",
+    "datasetlint.jsonl": "c43ebf1c9d6db2dff862e5a99800a730de250b0be6209a66729f4269ac698359"
+  },
+  "validation_report": {
+    "schema_version": 1,
+    "passed": false,
+    "counts": {
+      "test": 5000,
+      "train": 50000
+    },
+    "findings": [],
+    "max_findings": 0,
+    "total_findings": 10000,
+    "findings_truncated": true,
+    "source_sha256": {
+      "test": "fac89a58b73af8d53a4180fe33f7ed6f0e1ae1f70cc36aadb91080154e56ccc6",
+      "train": "fe2c875985ccf4f5b2e3e6dd0e4f4d1f50a48e21c59532e9cb61ec57b85e63fa"
+    }
+  },
+  "runs": [
+    {
+      "backend": "memory",
+      "elapsed_seconds": 0.8272368390025804,
+      "peak_rss_bytes": 56188928,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 0
+      },
+      "trial": 1
+    },
+    {
+      "backend": "sqlite",
+      "elapsed_seconds": 1.41303335900011,
+      "peak_rss_bytes": 15073280,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 59456
+      },
+      "trial": 1
+    },
+    {
+      "backend": "sqlite",
+      "elapsed_seconds": 1.206995034001011,
+      "peak_rss_bytes": 15073280,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 59456
+      },
+      "trial": 2
+    },
+    {
+      "backend": "memory",
+      "elapsed_seconds": 0.5312535100019886,
+      "peak_rss_bytes": 56184832,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 0
+      },
+      "trial": 2
+    },
+    {
+      "backend": "memory",
+      "elapsed_seconds": 0.9639872039988404,
+      "peak_rss_bytes": 56188928,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 0
+      },
+      "trial": 3
+    },
+    {
+      "backend": "sqlite",
+      "elapsed_seconds": 1.214993969995703,
+      "peak_rss_bytes": 15073280,
+      "filesystem_operations": {
+        "input": 0,
+        "output": 59464
+      },
+      "trial": 3
+    }
+  ],
+  "recorded_date_utc": "2026-10-19"
+}

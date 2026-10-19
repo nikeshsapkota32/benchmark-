@@ -25,7 +25,10 @@
 - Implemented: reproducible Linux-only synthetic profiling script with separate
   worker processes, peak process RSS, elapsed scan time, source/code hashes and
   complete backend-report equivalence checks. One host's raw trials are recorded.
-- Next: characterize disk space/I/O and representative workloads on more hosts;
+- Implemented: Linux filesystem input/output counter deltas around each profile
+  scan, including cleanup, with documented units and valid zero observations.
+  These are not byte counts, syscall counts or physical-device measurements.
+- Next: characterize disk space and representative workloads on more hosts;
   consider streaming finding output separately. Do not generalize one host's RSS.
 - Implemented: SHA-256 hashes of the exact JSONL bytes consumed during validation.
 - Add format adapters only with documented licensed fixtures.

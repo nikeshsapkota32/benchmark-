@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -40,9 +41,46 @@ class IndexProfilingTests(unittest.TestCase):
             self.assertGreater(row["peak_rss_bytes"], 0)
             self.assertGreaterEqual(row["elapsed_seconds"], 0)
             self.assertNotIn("report", row)
+            for direction in ("input", "output"):
+                self.assertIs(type(row["filesystem_operations"][direction]), int)
+                self.assertGreaterEqual(row["filesystem_operations"][direction], 0)
         self.assertEqual(set(result["implementation_sha256"]), {"datasetlint", "datasetlint.indexes", "datasetlint.jsonl"})
         self.assertEqual(len(result["script_sha256"]), 64)
         self.assertIn("process-lifetime", result["measurement"]["memory"])
+        self.assertIn("ru_inblock", result["measurement"]["io"])
+
+    @unittest.skipUnless(sys.platform == "linux", "Linux resource counters")
+    def test_io_counts_cover_scan_and_cleanup_not_process_lifetime(self):
+        import resource
+        events = []
+        def usage(who):
+            self.assertEqual(who, resource.RUSAGE_SELF)
+            events.append("usage")
+            if len(events) == 1:
+                return SimpleNamespace(ru_inblock=100, ru_oublock=200, ru_maxrss=10)
+            return SimpleNamespace(ru_inblock=103, ru_oublock=207, ru_maxrss=20)
+        def scan(*args, **kwargs):
+            events.append("scan")
+            # inspect_jsonl returns only after its index context has cleaned up.
+            return {"synthetic": True}
+        with patch.object(resource, "getrusage", side_effect=usage), \
+                patch.object(profiler.jsonl, "inspect_jsonl", side_effect=scan), \
+                patch.object(profiler.time, "perf_counter", side_effect=[5.0, 5.5]):
+            result = profiler.measure({}, "sqlite")
+        self.assertEqual(events, ["usage", "scan", "usage"])
+        self.assertEqual(result["filesystem_operations"], {"input": 3, "output": 7})
+        self.assertEqual(result["elapsed_seconds"], 0.5)
+        self.assertEqual(result["peak_rss_bytes"], 20 * 1024)
+        self.assertEqual(result["report"], {"synthetic": True})
+
+    @unittest.skipUnless(sys.platform == "linux", "Linux resource counters")
+    def test_zero_io_counters_are_valid(self):
+        import resource
+        usage = SimpleNamespace(ru_inblock=99, ru_oublock=42, ru_maxrss=10)
+        with patch.object(resource, "getrusage", return_value=usage), \
+                patch.object(profiler.jsonl, "inspect_jsonl", return_value={}):
+            result = profiler.measure({}, "memory")
+        self.assertEqual(result["filesystem_operations"], {"input": 0, "output": 0})
 
     def test_non_linux_is_rejected_instead_of_guessing_units(self):
         with patch.object(profiler.sys, "platform", "darwin"):
