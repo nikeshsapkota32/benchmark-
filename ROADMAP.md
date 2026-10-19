@@ -14,6 +14,8 @@
 - Add a LightEval adapter after validating current result schemas.
 
 ## More useful CI reports
+- JSON decoder nesting-limit failures: handled as input errors across run and
+  policy files, with exit 2 and no partial report in every output format.
 - Per-metric absolute tolerances: implemented via `--metric-tolerances`.
 - Explicit direction policies: implemented via `--metric-directions`; conflicts
   with either run are rejected rather than silently overriding metadata.
