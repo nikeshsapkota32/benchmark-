@@ -172,6 +172,76 @@ class IndexProfilingTests(unittest.TestCase):
             # Buffered logical pages are not the database file's on-disk length.
             self.assertGreater(result["logical_database_bytes"], result["files"]["database"]["file_bytes"])
 
+    def test_snapshot_keeps_zero_length_files_but_omits_absent_sidecars(self):
+        class Connection:
+            in_transaction = False
+
+            def execute(self, query):
+                if query == "PRAGMA database_list":
+                    return [(0, "main", "/synthetic/index.sqlite")]
+                return SimpleNamespace(fetchone=lambda: (1 if "count" in query else 4096,))
+
+        def stat(path):
+            if path.name in ("index.sqlite", "index.sqlite-journal"):
+                return SimpleNamespace(st_size=0, st_blocks=0)
+            raise FileNotFoundError("synthetic absent sidecar")
+
+        with patch.object(Path, "stat", stat):
+            result = profiler.storage_snapshot(Connection())
+        self.assertEqual(result["files"], {
+            "database": {"file_bytes": 0, "allocated_bytes": 0},
+            "journal": {"file_bytes": 0, "allocated_bytes": 0}})
+        self.assertEqual((result["file_bytes"], result["allocated_bytes"]), (0, 0))
+        self.assertEqual(result["logical_database_bytes"], 4096)
+        self.assertFalse(result["uncommitted_transaction"])
+
+    @unittest.skipUnless(sys.platform == "linux", "Linux profiling")
+    def test_storage_failures_return_cli_error_and_release_real_index(self):
+        original_hook = profiler.datasetlint.open_indexes
+        snapshot = profiler.storage_snapshot
+        real_stat = Path.stat
+        cases = (("query", "SQLite index operation failed"),
+                 ("main_missing", "synthetic missing main database"),
+                 ("sidecar_permission", "synthetic sidecar permission error"))
+        for failure, message in cases:
+            captured = {}
+
+            def observe(connection):
+                captured["connection"] = connection
+                captured["path"] = Path(connection.execute("PRAGMA database_list").fetchone()[2])
+
+                class QueryFailure:
+                    def execute(self, query):
+                        if query == "PRAGMA main.page_count":
+                            raise sqlite3.OperationalError("private SQL detail")
+                        return connection.execute(query)
+
+                def stat(path, *args, **kwargs):
+                    if failure == "main_missing" and path == captured["path"]:
+                        raise FileNotFoundError(message)
+                    if failure == "sidecar_permission" and str(path) == str(captured["path"]) + "-journal":
+                        raise PermissionError(message)
+                    return real_stat(path, *args, **kwargs)
+
+                with patch.object(Path, "stat", stat):
+                    return snapshot(QueryFailure() if failure == "query" else connection)
+
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                paths = profiler.write_synthetic(directory, 10, 32)
+                out, err = io.StringIO(), io.StringIO()
+                with patch.object(profiler, "storage_snapshot", side_effect=observe):
+                    with redirect_stdout(out), redirect_stderr(err):
+                        code = profiler.main(["--worker", "sqlite", str(paths["train"]),
+                                              str(paths["test"])])
+                self.assertEqual((code, out.getvalue()), (2, ""))
+                self.assertEqual(err.getvalue(), "profile_indexes: " + message + "\n")
+                self.assertIs(profiler.datasetlint.open_indexes, original_hook)
+                self.assertFalse(captured["path"].parent.exists())
+                with self.assertRaises(sqlite3.ProgrammingError):
+                    captured["connection"].execute("SELECT 1")
+                # A failed observation must not poison the next profiling call.
+                self.assertIsNotNone(profiler.measure(paths, "sqlite")["index_storage"])
+
     @unittest.skipUnless(sys.platform == "linux", "Linux profiling")
     def test_observation_and_failure_both_close_connection_and_restore_hook(self):
         original = profiler.datasetlint.open_indexes
