@@ -24,7 +24,13 @@
   explicitly synthetic/untrained fixtures. Loading, validation, conversion and
   exact-byte model/input hashing precede warm-up and measurement; the timed
   boundary includes arithmetic, allocation, finiteness checks and argmax.
-  Optimized runtime adapters and model-quality validation remain future work.
+  Model-quality validation remains future work.
+- Implemented optional NumPy CPU example (#51): shared strict fixture validation,
+  read-only float64 arrays, distinct matvec/bias/argmax timing protocol, exact-byte
+  identities and verified/restored BLAS thread limits. Native backend versions
+  are recorded without library paths. Optional dependency CI is separate from
+  the dependency-free core. Larger licensed workloads and actual Pi measurements
+  remain future work; the tiny synthetic fixture makes no accuracy/speed claim.
 - Implemented: opt-in exact-byte input hashes for saved-report CLI comparisons,
   using the same reads for parsing and hashing without claiming provenance.
 - Implemented: offline descriptive latency comparisons after strict or

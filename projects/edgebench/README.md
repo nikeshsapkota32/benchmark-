@@ -1,8 +1,8 @@
 # EdgeBench
 
 Measure a Python callable's completed-call latency on the current machine.
-Python 3.10+, standard-library only. Intended for CPU and Raspberry Pi inference
-experiments; this initial version provides the timing API and a synthetic demo.
+Python 3.10+, standard-library-only core. Intended for CPU and Raspberry Pi
+inference experiments; includes synthetic examples and an optional NumPy example.
 
 ```sh
 python -m pip install -e .
@@ -154,6 +154,62 @@ output path distinct from either input. No thread setting is applied or inferred
 Run on an actual Raspberry Pi to obtain Pi timings; running this command on
 another host produces only that host's measurements. There is no network,
 download, paid inference, automatic training or accuracy claim in the example.
+
+## Run the optional NumPy CPU example
+
+From this project's checkout, install the optional dependencies and reuse the
+same **synthetic, untrained** fixtures. No model or dataset download is needed:
+
+```sh
+python -m pip install '.[numpy-example]'
+python examples/numpy_linear_classifier.py \
+  --model examples/synthetic-linear-model.json \
+  --input examples/synthetic-linear-input.json \
+  --threads 1 --warmups 3 --repeats 100 > numpy-timing.json
+edgebench --validate numpy-timing.json
+python -m unittest discover -s tests_optional -v
+```
+
+The default EdgeBench installation and existing tests still need no NumPy.
+Optional CI checks NumPy 2.2.6/Python 3.10 and NumPy 2.3.5/Python 3.12 and 3.13,
+all with threadpoolctl 3.6.0. Other supported dependency versions are not
+necessarily covered by this matrix. The example script and fixtures live in the
+checkout; the installed package includes their shared strict fixture validator.
+
+Loading, validation, exact-byte hashing and conversion to read-only C-contiguous
+float64 arrays occur before warm-up or timing. The `numpy-linear-argmax-v1`
+protocol times `weights @ values + bias`, intermediate/result allocation,
+finiteness checking and first-index argmax, plus EdgeBench's normal dispatch and
+completion checks. NumPy/BLAS may accumulate values differently from sequential
+Python; the protocols are intentionally incompatible. Tiny fixtures emphasize
+harness overhead and do not characterize production inference throughput.
+Nonfinite results abort with exit 2 and no stdout report. Malformed fixtures,
+missing dependencies and unverifiable thread settings also return exit 2.
+
+`--threads` is a positive **configured BLAS thread limit**, not an observation of
+workers used, a CPU-affinity setting or a promise that this small matrix/vector
+product is parallel. The example applies it around the entire warm-up and
+measurement run using threadpoolctl, verifies all reported BLAS backends before
+and after measurement, and restores prior settings on success or failure. It
+fails if no controllable BLAS backend or backend version can be identified.
+Thread setup and inspection are outside the measured intervals. Use this CLI in
+a dedicated process: native thread controls can affect other callers; concurrent
+changes are not isolated or continuously monitored.
+
+The report records float64, CPU, input shape, batch size one, exact-byte fixture
+hashes, the applied thread limit and actual host metadata. To preserve the
+schema-v1 configuration contract, `runtime_version` is a canonical JSON **string**
+containing NumPy and threadpoolctl versions and a sorted `blas` list with each
+backend's `internal_api`, `version`, `threading_layer` and `architecture` (null
+when an optional property is unavailable). Library paths, input paths, weights,
+input values and predictions are omitted. Strict compatibility checks compare
+this string; intentionally changing only the thread limit requires the explicit
+`--vary-field threads` policy described below. Matching metadata does not prove
+identical hardware, thermal conditions or a fair experiment.
+
+These are synchronous CPU measurements of the actual host. No Raspberry Pi
+performance or model accuracy is claimed. Preserve original inputs and reports,
+and choose an output path distinct from both input files.
 
 ## Validate a saved report
 

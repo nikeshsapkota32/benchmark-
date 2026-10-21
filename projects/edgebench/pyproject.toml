@@ -12,6 +12,9 @@ license = {file = "LICENSE"}
 authors = [{name = "Nikesh Sapkota"}]
 dependencies = []
 
+[project.optional-dependencies]
+numpy-example = ["numpy>=2.2,<3", "threadpoolctl>=3.6,<4"]
+
 [project.scripts]
 edgebench = "edgebench.__main__:main"
 
