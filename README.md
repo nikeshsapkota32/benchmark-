@@ -75,6 +75,14 @@ out-of-range JSON integers are input errors as well.
 Finite scores remain comparable even when their difference exceeds that range;
 the comparison preserves the tolerance boundary instead of overflowing.
 
+Run and policy files reject the nonstandard unquoted tokens `NaN`, `Infinity`
+and `-Infinity` anywhere, including in otherwise ignored nested fields. These
+file-syntax errors exit 2 without a partial report; `load()` raises `ValueError`.
+Quoted strings such as `"NaN"` remain strings. This does not validate the meaning
+of extra fields or change the in-memory `compare()` API: extras remain ignored.
+Valid JSON numbers such as `1e400` still use the existing field validation:
+scores and tolerances must be finite, while extra fields are not interpreted.
+
 Run and policy files that exceed Python's JSON decoder nesting limit are input
 errors (exit 2), with no traceback or partial JSON/Markdown report. The `load()`
 helper raises `ValueError` for this condition. Supported nested extra run fields
