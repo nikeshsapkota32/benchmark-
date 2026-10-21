@@ -39,6 +39,8 @@ class IndexProfilingTests(unittest.TestCase):
         self.assertEqual([row["backend"] for row in result["runs"]], ["memory", "sqlite", "sqlite", "memory"])
         self.assertEqual([row["trial"] for row in result["runs"]], [1, 1, 2, 2])
         for row in result["runs"]:
+            self.assertEqual(row["script_sha256"], result["script_sha256"])
+            self.assertEqual(row["implementation_sha256"], result["implementation_sha256"])
             self.assertGreater(row["peak_rss_bytes"], 0)
             self.assertGreaterEqual(row["elapsed_seconds"], 0)
             self.assertNotIn("report", row)
@@ -58,15 +60,20 @@ class IndexProfilingTests(unittest.TestCase):
         self.assertEqual(len(result["script_sha256"]), 64)
         self.assertIn("process-lifetime", result["measurement"]["memory"])
         self.assertIn("ru_inblock", result["measurement"]["io"])
+        self.assertIn("not loaded-bytecode", result["measurement"]["sources"])
 
     @unittest.skipUnless(sys.platform == "linux", "Linux resource counters")
     def test_io_counts_cover_scan_and_cleanup_not_process_lifetime(self):
         import resource
         events = []
+        fingerprints = profiler.source_fingerprints
+        def sources():
+            events.append("sources")
+            return fingerprints()
         def usage(who):
             self.assertEqual(who, resource.RUSAGE_SELF)
             events.append("usage")
-            if len(events) == 1:
+            if events.count("usage") == 1:
                 return SimpleNamespace(ru_inblock=100, ru_oublock=200, ru_maxrss=10)
             return SimpleNamespace(ru_inblock=103, ru_oublock=207, ru_maxrss=20)
         def scan(*args, **kwargs):
@@ -82,9 +89,10 @@ class IndexProfilingTests(unittest.TestCase):
         with patch.object(resource, "getrusage", side_effect=usage), \
                 patch.object(profiler.jsonl, "inspect_jsonl", side_effect=scan), \
                 patch.object(profiler.time, "perf_counter", side_effect=[5.0, 5.5]), \
+                patch.object(profiler, "source_fingerprints", side_effect=sources), \
                 patch.object(profiler, "storage_snapshot", side_effect=observe):
             result = profiler.measure({}, "sqlite")
-        self.assertEqual(events, ["usage", "scan", "storage", "usage"])
+        self.assertEqual(events, ["sources", "usage", "scan", "storage", "usage", "sources"])
         self.assertEqual(result["filesystem_operations"], {"input": 3, "output": 7})
         self.assertEqual(result["elapsed_seconds"], 0.5)
         self.assertEqual(result["peak_rss_bytes"], 20 * 1024)
@@ -127,7 +135,8 @@ class IndexProfilingTests(unittest.TestCase):
 
     def test_report_mismatch_discards_resource_results(self):
         def completed(report):
-            return subprocess.CompletedProcess([], 0, json.dumps({"report": report}), "")
+            return subprocess.CompletedProcess([], 0, json.dumps(
+                {"report": report, **profiler.source_fingerprints()}), "")
         with patch.object(profiler.sys, "platform", "linux"), patch.object(
                 profiler.subprocess, "run", side_effect=[completed({"a": 1}), completed({"a": 2})]):
             with self.assertRaisesRegex(ValueError, "backend reports differ"):

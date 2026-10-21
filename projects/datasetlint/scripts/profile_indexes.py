@@ -17,6 +17,14 @@ import datasetlint
 from datasetlint import indexes, jsonl
 
 
+def source_fingerprints():
+    """Observe source-file bytes, not loaded bytecode or verified provenance."""
+    return {"script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "implementation_sha256": {
+                module.__name__: hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
+                for module in (datasetlint, indexes, jsonl)}}
+
+
 def storage_snapshot(connection):
     """Observe the live main database without committing or flushing its pages."""
     database = Path(next(row[2] for row in connection.execute("PRAGMA database_list")
@@ -68,6 +76,7 @@ def measure(paths, backend):
     if sys.platform != "linux":
         raise ValueError("resource profiling currently supports Linux only")
     import resource
+    sources = source_fingerprints()
     storage = None
 
     @contextmanager
@@ -88,11 +97,14 @@ def measure(paths, backend):
         after = resource.getrusage(resource.RUSAGE_SELF)
     if backend == "sqlite" and storage is None:
         raise ValueError("SQLite storage observation was not captured")
+    # File reads stay outside the measured scan and filesystem-counter interval.
+    if source_fingerprints() != sources:
+        raise ValueError("sources changed during worker; resource results discarded")
     peak = after.ru_maxrss * 1024
     return {"backend": backend, "elapsed_seconds": elapsed, "peak_rss_bytes": peak,
             "filesystem_operations": {"input": after.ru_inblock - before.ru_inblock,
                                       "output": after.ru_oublock - before.ru_oublock},
-            "index_storage": storage, "report": report}
+            "index_storage": storage, "report": report, **sources}
 
 
 def profile(records=10000, text_bytes=512, trials=3):
@@ -100,6 +112,7 @@ def profile(records=10000, text_bytes=512, trials=3):
         raise ValueError("resource profiling currently supports Linux only")
     if type(trials) is not int or trials < 1:
         raise ValueError("trials must be a positive integer")
+    sources = source_fingerprints()
     runs, reference = [], None
     with tempfile.TemporaryDirectory(prefix="datasetlint-profile-") as directory:
         paths = write_synthetic(directory, records, text_bytes)
@@ -114,6 +127,8 @@ def profile(records=10000, text_bytes=512, trials=3):
                 if completed.returncode:
                     raise ValueError(f"{backend} profiling worker failed (exit {completed.returncode})")
                 result = json.loads(completed.stdout)
+                if any(result.get(key) != value for key, value in sources.items()):
+                    raise ValueError("worker sources differ from parent; resource results discarded")
                 report = result.pop("report")
                 if reference is not None and report != reference:
                     raise ValueError("backend reports differ; resource results discarded")
@@ -125,8 +140,8 @@ def profile(records=10000, text_bytes=512, trials=3):
                 or reference["total_findings"] != expected_test * 2 or reference["passed"]
                 or reference["findings"] or not reference["findings_truncated"]):
             raise ValueError("unexpected synthetic validation result; resource results discarded")
-    source_hashes = {module.__name__: hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
-                     for module in (datasetlint, indexes, jsonl)}
+    if source_fingerprints() != sources:
+        raise ValueError("sources changed during profile; resource results discarded")
     return {"schema_version": 1, "experiment": "datasetlint-synthetic-index-profile-v1",
             "environment": {"system": platform.system(), "release": platform.release(),
                             "machine": platform.machine(), "python": platform.python_version(),
@@ -138,9 +153,9 @@ def profile(records=10000, text_bytes=512, trials=3):
                             "memory": "Linux process-lifetime ru_maxrss in bytes; includes interpreter and imports",
                             "io": "Linux RUSAGE_SELF ru_inblock/ru_oublock deltas around inspect_jsonl including storage observation and cleanup; filesystem operation counters, not bytes or syscall counts",
                             "storage": "single snapshot after successful scan before close/rollback; main page_count * page_size includes buffered pages; file_bytes is stat size and allocated_bytes is st_blocks * 512 for main database and existing journal/wal/shm; excludes directories and other SQLite temporary files; no commit/flush; not peak or physical-device usage; null for memory backend or unavailable allocation counts; Python tempfile filesystem uncharacterized",
+                            "sources": "source-file SHA-256 before/after each worker scan and parent profile; every worker must match parent; reads outside scan time/I/O counters but setup may affect process-lifetime RSS; not loaded-bytecode attestation or an atomic snapshot",
                             "order": "alternating first backend; fresh process per run; no cache flushing"},
-            "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-            "implementation_sha256": source_hashes,
+            **sources,
             "validation_report": reference, "runs": runs}
 
 

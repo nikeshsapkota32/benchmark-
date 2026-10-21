@@ -143,6 +143,26 @@ profile exits 0 even though the deliberately duplicated dataset has `passed: fal
 Invalid parameters, worker failures, timeouts or unequal reports exit 2. Each
 worker has a 300-second timeout. Smaller defaults use 10,000 train records.
 
+Every new trial records its own `script_sha256` and `implementation_sha256`.
+Each worker hashes its script and the three imported DatasetLint source files
+before and after the scan. The parent samples its sources before and after the
+profile, and accepts a trial only if all worker hashes match the initial parent
+hashes. Missing worker hashes, mismatched source bytes or a detected source change
+discard all measurements with exit 2 and no partial report. This prevents equal
+validation reports from concealing different source versions across workers.
+Identical source bytes installed at different paths are accepted.
+
+Hash reads are outside scan elapsed time and filesystem-counter intervals, but
+pre-scan hashing may affect process-lifetime RSS and filesystem caches. The
+`measurement.sources` field records these boundaries. Keep code and imports
+stable from process startup through completion: these checks observe file bytes,
+not loaded bytecode, dependencies, runtime monkey patches or verified provenance.
+They are not an atomic snapshot and cannot detect a change reverted between
+samples. Older saved profiles have no per-worker source-consistency check;
+their parent-only hashes must not be interpreted as worker attestations. Archived
+measurements remain unchanged and should not be treated as directly comparable
+to timings/RSS from a different profiling script.
+
 Each new trial also includes `filesystem_operations: {"input": N, "output": N}`.
 These are Linux `RUSAGE_SELF` counter differences (`ru_inblock`, `ru_oublock`)
 sampled immediately around the scan, including index cleanup. They exclude
