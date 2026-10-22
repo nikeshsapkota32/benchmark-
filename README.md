@@ -271,6 +271,12 @@ settings do not establish that no template or system instruction was used.
 Exports exceeding Python's JSON decoder nesting limit also exit 2, without a
 traceback or partial converted run. Supported nested task configuration is
 preserved in the protocol; no fixed nesting-depth guarantee is made.
+Unquoted `NaN`, `Infinity` and `-Infinity` are rejected anywhere in the export,
+including ignored metadata and unselected metrics such as stderr. The converter
+requires standard JSON syntax for the whole file, not only the selected result.
+Quoted strings are preserved in task metadata. In-memory `adapt()` behavior is
+unchanged; these file checks do not validate real-export compatibility or lift
+the real-export validation hold.
 Example names above are
 illustrative, not measured benchmark claims.
 

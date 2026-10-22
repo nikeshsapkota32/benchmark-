@@ -14,6 +14,10 @@
 - Main's decoder-limit handling is integrated into the adapter branch, with
   entry-point regressions for rejected deep exports, supported nested metadata
   and unexpected internal errors. Real-export validation remains outstanding.
+- Main's nonstandard-constant rejection is integrated, with adapter entry-point
+  coverage for ignored extras, task metadata and unselected stderr metrics;
+  quoted strings and in-memory conversion are unchanged. Real-export review
+  must account for the strict whole-file JSON syntax requirement.
 - Add a LightEval adapter after validating current result schemas.
 
 ## More useful CI reports
