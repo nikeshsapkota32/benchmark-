@@ -17,6 +17,8 @@
 - Add a LightEval adapter after validating current result schemas.
 
 ## More useful CI reports
+- Nonstandard NaN/Infinity tokens: rejected across run/policy files, including
+  ignored fields, without changing comparison semantics or exact-byte audits.
 - JSON decoder nesting-limit failures: handled as input errors across run and
   policy files, with exit 2 and no partial report in every output format.
 - Per-metric absolute tolerances: implemented via `--metric-tolerances`.

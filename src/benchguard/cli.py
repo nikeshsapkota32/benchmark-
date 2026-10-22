@@ -22,10 +22,15 @@ def load(path):
     return _load_with_digest(path)[0]
 
 
+def _reject_constant(value):
+    raise ValueError("nonstandard JSON constant")
+
+
 def _load_with_digest(path):
     content = Path(path).read_bytes()
     try:
-        data = json.loads(content.decode("utf-8"), object_pairs_hook=_unique_object)
+        data = json.loads(content.decode("utf-8"), object_pairs_hook=_unique_object,
+                          parse_constant=_reject_constant)
     except RecursionError:
         raise ValueError("JSON nesting exceeds parser limit") from None
     return data, hashlib.sha256(content).hexdigest()
