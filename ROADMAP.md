@@ -1,9 +1,23 @@
 # Development plan
 
 ## Next: real evaluation artifacts
-- Add an lm-evaluation-harness adapter using small, licensed upstream fixtures.
-- Preserve task version, few-shot settings, filter and sample-count metadata.
-- Reject unsupported or ambiguous exports instead of silently guessing.
+- lm-evaluation-harness aggregate adapter: implemented for one explicitly
+  selected task/filtered metric; preserves task version, few-shot, filter,
+  counts, task config, settings and optional task hash, using synthetic tests.
+- Recorded chat/system-instruction fields now participate in compatibility,
+  including missing-versus-null distinctions. Schema/writer inspected at
+  [harness d6de816](https://github.com/EleutherAI/lm-evaluation-harness/blob/d6de81643928d653435c431bae19945d41d32520/lm_eval/result_schema.py)
+  on 2026-10-18. Synthetic regressions reproduce the previously ignored template
+  change; this is not yet validation against a real model export.
+- Next: validate with a suitably licensed real export and consider a
+  per-sample JSONL option for sample identity; do not infer IDs from counts.
+- Main's decoder-limit handling is integrated into the adapter branch, with
+  entry-point regressions for rejected deep exports, supported nested metadata
+  and unexpected internal errors. Real-export validation remains outstanding.
+- Main's nonstandard-constant rejection is integrated, with adapter entry-point
+  coverage for ignored extras, task metadata and unselected stderr metrics;
+  quoted strings and in-memory conversion are unchanged. Real-export review
+  must account for the strict whole-file JSON syntax requirement.
 - Add a LightEval adapter after validating current result schemas.
 
 ## More useful CI reports

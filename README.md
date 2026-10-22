@@ -221,6 +221,65 @@ encryption nor proof of provenance, correct measurements or model quality.
 Keep the original run/policy files for reproducibility; this report is not a
 replacement for them. When redirecting output, use a path distinct from inputs.
 
+## Import an lm-evaluation-harness aggregate result
+
+`benchguard-lmeval` converts **one explicitly selected task and filtered metric**
+from a saved lm-evaluation-harness aggregate JSON export. It never runs a model.
+For example, with two existing harness result files:
+
+```sh
+benchguard-lmeval baseline-results.json --task my_task --metric acc,none \
+  --model baseline@commit --dataset-revision dataset@commit \
+  --protocol 'prompt=v1;chat-template=none' > baseline-benchguard.json
+benchguard-lmeval candidate-results.json --task my_task --metric acc,none \
+  --model candidate@commit --dataset-revision dataset@commit \
+  --protocol 'prompt=v1;chat-template=none' > candidate-benchguard.json
+benchguard baseline-benchguard.json candidate-benchguard.json
+```
+
+The model label, pinned dataset revision and reviewed extra protocol are
+required inputs, not inferred from filenames or a possibly random harness
+`model_name`. Use the exact key from `results[task]`, including its filter suffix
+such as `acc,none`; groups and stderr metrics are not selected automatically.
+The converter uses the harness's `higher_is_better`, `n-samples.effective`,
+`sample_len`, task version, `n-shot`, task config and recorded evaluation seeds
+and settings. It also carries the recorded harness `git_hash`, original sample
+count and optional `task_hashes[task]` into a deterministic protocol string.
+Changes to any of those fields make the two converted runs incompatible.
+When recorded, `system_instruction`, `system_instruction_sha`, `chat_template`,
+`chat_template_sha` and `fewshot_as_multiturn` are preserved too. Changing or
+removing one of these fields blocks comparison, even if the caller's protocol
+label is unchanged. Missing fields remain distinct from explicit `null`; text
+fields accept strings or null, and multi-turn accepts only booleans or null.
+Recorded hashes are preserved, not verified against the associated text.
+The protocol uses adapter version `benchguard-lmeval-v2`; regenerate both run
+files if upgrading from an earlier adapter version.
+See the upstream [EvalResults schema](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/result_schema.py)
+and [aggregate writer](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/loggers/evaluation_tracker.py)
+for the source format. This adapter targets that aggregate format, not the
+separate per-sample JSONL export or legacy minimal result objects.
+
+Ambiguous or missing counts, direction, version, evaluation settings, task
+config or harness revision cause exit code 2. Review the inputs and protocol
+before sharing; the output embeds task configuration and may contain local
+paths or sensitive metadata. The recorded revision/hash is metadata, not proof
+of provenance. Without per-sample IDs or a task hash, equal sample counts do
+not establish equal sample identity. `--protocol` must explicitly account for
+settings not captured in the saved aggregate, including an unrecorded chat
+template and model invocation details that affect comparability. Absent prompt
+settings do not establish that no template or system instruction was used.
+Exports exceeding Python's JSON decoder nesting limit also exit 2, without a
+traceback or partial converted run. Supported nested task configuration is
+preserved in the protocol; no fixed nesting-depth guarantee is made.
+Unquoted `NaN`, `Infinity` and `-Infinity` are rejected anywhere in the export,
+including ignored metadata and unselected metrics such as stderr. The converter
+requires standard JSON syntax for the whole file, not only the selected result.
+Quoted strings are preserved in task metadata. In-memory `adapt()` behavior is
+unchanged; these file checks do not validate real-export compatibility or lift
+the real-export validation hold.
+Example names above are
+illustrative, not measured benchmark claims.
+
 ## What this does not prove
 
 This is a deterministic regression gate, not a statistical significance test.
@@ -229,8 +288,10 @@ sample IDs check the reported sample set, but cannot prove that those IDs refer
 to unchanged content or that the reported samples were actually evaluated. Pin
 dataset revisions and include sampling, prompt, inference and evaluator settings
 in the protocol string. The tool trusts this metadata; it cannot verify its provenance.
-No benchmark runner, model inference, GPU profiling or native lm-eval/LightEval
-adapter is included yet. A passing report does not establish general model quality.
+No benchmark runner, model inference, GPU profiling or LightEval adapter is
+included. The lm-evaluation-harness adapter imports aggregate results only;
+it cannot validate the underlying evaluation. A passing report does not
+establish general model quality.
 
 ## Development
 

@@ -12,6 +12,7 @@ dependencies = []
 
 [project.scripts]
 benchguard = "benchguard.cli:main"
+benchguard-lmeval = "benchguard.lm_eval_adapter:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
