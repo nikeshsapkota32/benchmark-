@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 
 from . import evaluate
+from .csv_input import load_digits_csv
 from .export import to_benchguard
 from .response import RESPONSE_POLICIES
 
@@ -24,6 +25,11 @@ def reject_constant(value):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Score saved digit or arithmetic predictions offline.")
     parser.add_argument("predictions", type=Path)
+    parser.add_argument("--input-format", choices=("json", "digits-csv-v1"), default="json",
+                        help="input layout (default: json); CSV supports digit predictions only")
+    parser.add_argument("--model", help="required run model label for CSV input only")
+    parser.add_argument("--dataset-revision", help="required dataset pin for CSV input only")
+    parser.add_argument("--protocol", help="required evaluation protocol for CSV input only")
     parser.add_argument("--details", action="store_true",
                         help="include per-record indices and outcomes, without raw answers or IDs")
     parser.add_argument("--by-operator", action="store_true",
@@ -33,17 +39,25 @@ def main(argv=None):
     parser.add_argument("--format", choices=("json", "benchguard"), default="json",
                         help="normal report or BenchGuard run with raw sample IDs (default: json)")
     args = parser.parse_args(argv)
+    metadata = {key: getattr(args, key) for key in ("model", "dataset_revision", "protocol")}
+    if args.input_format == "digits-csv-v1" and any(value is None for value in metadata.values()):
+        parser.error("CSV input requires --model, --dataset-revision and --protocol")
+    if args.input_format == "json" and any(value is not None for value in metadata.values()):
+        parser.error("--model, --dataset-revision and --protocol require --input-format digits-csv-v1")
     if args.format == "benchguard" and args.details:
         parser.error("--details cannot be combined with --format benchguard")
     if args.format == "benchguard" and args.by_operator:
         parser.error("--by-operator cannot be combined with --format benchguard")
     try:
-        contents = args.predictions.read_text(encoding="utf-8")
-        try:
-            data = json.loads(contents, object_pairs_hook=unique_object,
-                              parse_constant=reject_constant)
-        except RecursionError:
-            raise ValueError("JSON nesting exceeds parser limit") from None
+        if args.input_format == "digits-csv-v1":
+            data = load_digits_csv(args.predictions, **metadata)
+        else:
+            contents = args.predictions.read_text(encoding="utf-8")
+            try:
+                data = json.loads(contents, object_pairs_hook=unique_object,
+                                  parse_constant=reject_constant)
+            except RecursionError:
+                raise ValueError("JSON nesting exceeds parser limit") from None
         if args.format == "benchguard":
             report = to_benchguard(data, response_policy=args.response_policy)
         else:

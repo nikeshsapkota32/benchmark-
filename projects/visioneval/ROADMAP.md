@@ -21,6 +21,11 @@
   policy specifies no-extracted-answer penalties; no answer guessing is used.
 - Next: reviewed format adapters; any broader extraction grammar requires a
   separate defined protocol and explicit unparseable-response accounting.
+- Implemented: opt-in `digits-csv-v1` input with exact columns, explicit run
+  metadata, preserved leading zeros/raw responses, strict row counts and no
+  dropped records. Existing response policies, reports and BenchGuard exports
+  are reused. The bundled CSV is original synthetic MIT-licensed data; real
+  model-export and arithmetic CSV adapters remain separate review work.
 - Review licenses before adding real handwritten-number fixtures or adapters.
 - Implemented: opt-in BenchGuard saved-run exports with metric directions,
   stable sample IDs and versioned protocol encoding that pins kind and response
