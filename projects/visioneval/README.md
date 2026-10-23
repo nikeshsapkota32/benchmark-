@@ -11,7 +11,7 @@ visioneval examples/arithmetic.json
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
-Input requires integer `schema_version: 1`, nonblank `model`, `dataset_revision`
+Default JSON input requires integer `schema_version: 1`, nonblank `model`, `dataset_revision`
 and `protocol` strings, `kind` (`digits` or `arithmetic`), and a nonempty `records`
 list. Every record requires a unique nonblank string `id`, a `target` and an
 explicit `prediction`. Use null for missing predictions; they remain in the
@@ -52,6 +52,63 @@ input errors. Prediction must be an integer or null. Booleans are rejected.
 Exact-match accuracy reports correct answers against the validated targets.
 No expression strings are executed. It does not assess reasoning steps or
 separate recognition errors from arithmetic errors.
+
+## Read a digit prediction CSV
+
+Select the explicit `digits-csv-v1` layout and provide run metadata:
+
+```sh
+visioneval examples/digits.csv --input-format digits-csv-v1 \
+  --model synthetic --dataset-revision fixture-v1 --protocol test-only
+```
+
+The required header and an example are:
+
+```csv
+id,target,prediction
+synthetic-0,001,001
+synthetic-1,07,7
+synthetic-2,5,
+```
+
+`examples/digits.csv` is original synthetic test data under this project's MIT
+license. Its expected report has 3 samples, 1 correct answer, 1 missing answer,
+and 2 edit errors over 6 target digits. These are hand-constructed scoring
+examples. No real dataset, image, model output or private research is included.
+
+The versioned layout requires exactly these three columns in this order and
+three fields in every record. Header names are case-sensitive. Empty files,
+header-only files, blank records, extra/missing fields and duplicate IDs are
+errors; no rejected record is skipped. Use UTF-8, optionally with an initial BOM.
+The reader uses commas, double quotes and doubled quotes for escaping, with
+LF/CRLF record endings and quoted multiline fields. It uses Python's
+[CSV reader](https://docs.python.org/3/library/csv.html) with `strict=True` and
+untranslated newlines. This defines a specific Python CSV dialect rather than
+claiming universal spreadsheet or RFC validation. No dialect sniffing occurs.
+
+All fields stay strings, including IDs and digit targets with leading zeros.
+Keep digit columns as text when producing the CSV: removed zeros cannot be
+recovered. Target/ID whitespace is preserved and validated normally. An empty
+prediction field, quoted or unquoted, counts as missing and stays in the
+denominator. Literal `null`, `NaN` and `N/A` remain response strings. To evaluate
+prose or whitespace around answers, choose one of the existing
+`--response-policy` options below; this input mode introduces no new extraction
+grammar. The counting policy keeps unparseable responses in the denominator.
+
+`--model`, `--dataset-revision` and `--protocol` are all required and nonblank in
+CSV mode. They are rejected in JSON mode to prevent accidental metadata
+overrides. CSV supports digit predictions only; use the JSON schema for
+arithmetic. `--details` and `--format benchguard` retain their existing rules,
+including raw sample IDs in BenchGuard exports. CSV and equivalent JSON records
+with the same metadata/policy produce identical reports and export fingerprints;
+the input layout does not add a new scoring protocol or verify provenance.
+
+Every record is parsed and validated before any report or export is printed.
+CSV structural/parser errors return exit 2 with a physical-line diagnostic when
+available and no raw row content. Records are accumulated in memory; this is
+not a streaming scorer. The current Python CSV field-size limit is respected
+and never changed globally; over-limit fields are input errors. JSON remains
+the default regardless of the file extension.
 
 ## Inspect arithmetic accuracy by operator
 
