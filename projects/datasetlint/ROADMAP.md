@@ -19,6 +19,9 @@
 - Implemented: opt-in finding limits with full totals and explicit truncation;
   validation and source hashing continue through all records. Zero retained
   findings never suppresses a failing audit. Default reports are unchanged.
+- Implemented: opt-in full-scan counts by duplicate/overlap ID/text category,
+  independent of retained details. Summary counts preserve first-occurrence
+  classification, validation and exit status across both input modes/backends.
 - Implemented: opt-in temporary SQLite exact-match indexes for JSON and JSONL,
   preserving reports and validation while moving unique keys out of Python
   dictionaries. Pair JSONL with a finding limit; total memory is not guaranteed.

@@ -10,10 +10,11 @@ _ASCII_WHITESPACE = re.compile(r"[ \t\r\n\v\f]+")
 
 
 def inspect(dataset, *, id_field="id", text_field="text", text_policy="exact", max_findings=None,
-            index_backend="memory"):
+            index_backend="memory", include_summary=False):
     _validate_fields(id_field, text_field)
     _validate_text_policy(text_policy)
     _validate_max_findings(max_findings)
+    _validate_include_summary(include_summary)
     validate_backend(index_backend)
     if not isinstance(dataset, dict) or type(dataset.get("schema_version")) is not int or dataset["schema_version"] != 1:
         raise ValueError("schema_version must be integer 1")
@@ -23,7 +24,13 @@ def inspect(dataset, *, id_field="id", text_field="text", text_policy="exact", m
         if not isinstance(rows, list) or not rows:
             raise ValueError(f"split {split!r} must contain a nonempty list")
     return _inspect(splits, id_field=id_field, text_field=text_field,
-                    text_policy=text_policy, max_findings=max_findings, index_backend=index_backend)
+                    text_policy=text_policy, max_findings=max_findings, index_backend=index_backend,
+                    include_summary=include_summary)
+
+
+def _validate_include_summary(include_summary):
+    if type(include_summary) is not bool:
+        raise ValueError("include_summary must be a boolean")
 
 
 def _validate_max_findings(max_findings):
@@ -51,17 +58,19 @@ def _validate_splits(splits):
 
 
 def _inspect(splits, sources=None, *, id_field="id", text_field="text", text_policy="exact",
-             max_findings=None, index_backend="memory"):
+             max_findings=None, index_backend="memory", include_summary=False):
     with open_indexes(index_backend) as (seen_ids, seen_texts):
         return _scan(splits, sources, id_field=id_field, text_field=text_field,
                      text_policy=text_policy, max_findings=max_findings,
-                     seen_ids=seen_ids, seen_texts=seen_texts)
+                     seen_ids=seen_ids, seen_texts=seen_texts, include_summary=include_summary)
 
 
-def _scan(splits, sources, *, id_field, text_field, text_policy, max_findings, seen_ids, seen_texts):
+def _scan(splits, sources, *, id_field, text_field, text_policy, max_findings, seen_ids, seen_texts,
+          include_summary=False):
     """Scan each iterable once; sources map JSONL indices to physical lines."""
     findings, counts = [], {}
     total_findings = 0
+    finding_counts = {"duplicate_id": 0, "duplicate_text": 0, "overlap_id": 0, "overlap_text": 0}
     for split in sorted(splits):
         rows = splits[split]
         counts[split] = 0
@@ -78,10 +87,13 @@ def _scan(splits, sources, *, id_field, text_field, text_policy, max_findings, s
                 previous = seen.get(value)
                 if previous is not None:
                     total_findings += 1
+                    previous_split, previous_index = previous
+                    code = f"duplicate_{role}" if split == previous_split else f"overlap_{role}"
+                    if include_summary:
+                        finding_counts[code] += 1
                     if max_findings is not None and len(findings) >= max_findings:
                         continue
-                    previous_split, previous_index = previous
-                    findings.append({"code": f"duplicate_{role}" if split == previous_split else f"overlap_{role}",
+                    findings.append({"code": code,
                                      "split": split, "index": index,
                                      "first_split": previous_split, "first_index": previous_index})
                     if sources:
@@ -95,6 +107,8 @@ def _scan(splits, sources, *, id_field, text_field, text_policy, max_findings, s
             where = sources[split] if sources else repr(split)
             raise ValueError(f"{where}: split must contain at least one record")
     report = {"schema_version": 1, "passed": total_findings == 0, "counts": counts, "findings": findings}
+    if include_summary:
+        report["finding_counts"] = finding_counts
     if max_findings is not None:
         report.update(max_findings=max_findings, total_findings=total_findings,
                       findings_truncated=total_findings > len(findings))

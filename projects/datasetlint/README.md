@@ -81,6 +81,41 @@ no partial report. Limiting findings bounds the retained finding list, **not**
 the ID/text indexes, total input size or scan time. JSON-object mode still loads
 the entire dataset. For disk-backed indexes, explicitly select the SQLite backend.
 
+## Summarize finding categories
+
+Use `--summary` to include full-scan counts by finding code. This is useful with
+`--max-findings 0` when you need to distinguish duplicates from cross-split overlap
+without retaining a potentially large detailed finding list:
+
+```sh
+datasetlint dataset.json --summary --max-findings 0
+datasetlint --split train=train.jsonl --split test=test.jsonl --summary \
+  --max-findings 100 --index-backend sqlite
+```
+
+Both Python APIs accept `include_summary=True` (a boolean; default `False`). The
+option adds a `finding_counts` object with all four keys, including zero counts:
+
+```json
+{"duplicate_id": 1, "duplicate_text": 1, "overlap_id": 2, "overlap_text": 1}
+```
+
+Counts cover every finding, even when details are capped or omitted. Their sum
+equals `total_findings` when a retention limit is supplied, or the length of the
+complete `findings` list otherwise. A clean audit has four zero counts. The
+summary counts findings, not unique records, unique values or all matching pairs:
+a record with a repeated ID and text contributes two findings. Classification
+uses the same first occurrence in sorted split order as detailed findings. If
+the first occurrence is in another split, subsequent repeats are overlaps even
+when that value has also appeared earlier in the current split.
+
+The option works with both input modes/backends, field mappings and text policies.
+It adds no raw record content and does not change validation, source hashing,
+finding order, retention limits, pass/fail status or exit codes. A late input
+error produces no partial summary. `--summary` alone still retains all details;
+pair it with a finding limit when needed. Omitting the option preserves the
+existing report shape. The four counters do not bound overall scan memory.
+
 ## Optional disk-backed duplicate indexes
 
 Use JSONL input and SQLite indexes when keeping every unique ID/text in Python
