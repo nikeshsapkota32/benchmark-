@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edgebench"
+version = "0.1.0"
+description = "Completed-call latency measurement for Python workloads"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Nikesh Sapkota"}]
+dependencies = []
+
+[project.optional-dependencies]
+numpy-example = ["numpy>=2.2,<3", "threadpoolctl>=3.6,<4"]
+
+[project.scripts]
+edgebench = "edgebench.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,31 @@
+name: Installed wheel tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  installed:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Test installation-check guards
+        run: python -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Build all four wheels
+        run: >-
+          python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/portfolio-wheels"
+          . ./projects/datasetlint ./projects/edgebench ./projects/visioneval
+      - name: Install only the built wheels in a fresh environment
+        run: |
+          python -m venv "$RUNNER_TEMP/portfolio-installed"
+          "$RUNNER_TEMP/portfolio-installed/bin/python" -m pip install \
+            --no-index --no-deps --find-links "$RUNNER_TEMP/portfolio-wheels" \
+            benchguard datasetlint edgebench visioneval
+      - name: Check installed imports, console scripts and tests
+        run: >-
+          "$RUNNER_TEMP/portfolio-installed/bin/python" -I
+          scripts/check_installed.py

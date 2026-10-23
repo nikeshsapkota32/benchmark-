@@ -1,0 +1,1 @@
+{"schema_version":1,"kind":"arithmetic","model":"synthetic-fixture","dataset_revision":"fixture-v1","protocol":"integer-answer","records":[{"id":"a","operands":[7,3],"operator":"-","target":4,"prediction":4},{"id":"b","operands":[2,5],"operator":"*","target":10,"prediction":null}]}

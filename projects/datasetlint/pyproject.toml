@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datasetlint"
+version = "0.1.0"
+description = "Offline exact duplicate and split-overlap checks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Nikesh Sapkota"}]
+dependencies = []
+
+[project.scripts]
+datasetlint = "datasetlint.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

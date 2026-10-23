@@ -1,0 +1,1 @@
+{"schema_version":1,"kind":"digits","model":"synthetic-fixture","dataset_revision":"fixture-v1","protocol":"exact-ascii-digits","records":[{"id":"a","target":"012","prediction":"12"},{"id":"b","target":"7","prediction":"7"}]}

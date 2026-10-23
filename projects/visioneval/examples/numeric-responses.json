@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "model": "synthetic-fixture-not-a-model-run",
+  "dataset_revision": "synthetic-arithmetic-v1",
+  "protocol": "whole numeric response; numeric-text-v1; no inference",
+  "kind": "arithmetic",
+  "records": [
+    {"id": "synthetic-1", "operands": [3, 4], "operator": "-", "target": -1, "prediction": " -1\n"},
+    {"id": "synthetic-2", "operands": [3, 4], "operator": "+", "target": 7, "prediction": " "}
+  ]
+}
