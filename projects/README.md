@@ -1,16 +1,14 @@
 # AI evaluation projects
 
-Three standalone Python packages are staged here for development. They do not
-depend on BenchGuard or on each other. The GitHub connection currently supports
-editing existing repositories but exposes no action to create repositories.
-Separate repository publication is pending; these directories can be moved
-without changing their code. No PyPI packages have been published.
+Three separately installable Python packages are staged here. They do not depend
+on BenchGuard or on each other. The portfolio pull request remains a draft while
+the final repository layout is decided. No PyPI packages have been published.
 
 | Project | Working first version | Next milestone |
 | --- | --- | --- |
-| DatasetLint | JSON/JSONL duplicate checks, optional SQLite indexes, bounded findings, field mapping and source hashes | Resource characterization and reviewed format adapters |
-| EdgeBench | Synchronous-call timing with async/generator-result rejection, saved-report validation and explicit controlled-variable policies | Reviewed workload adapters and hardware runs |
-| VisionEval | Saved digit/arithmetic scoring, operator breakdown, numeric parsing and ground-truth-fingerprinted BenchGuard exports | Reviewed format adapters and sample-level uncertainty |
+| DatasetLint | JSON/JSONL duplicate and overlap checks, optional finding summaries and SQLite indexes, field mapping and source hashes | Broader resource characterization and reviewed format adapters |
+| EdgeBench | Completed-call timing, saved-report checks, controlled-variable policies and synthetic linear/optional NumPy CPU examples | Reviewed workloads and measurements on actual hardware |
+| VisionEval | Digit/arithmetic scoring, digit CSV import, numeric response policies and ground-truth-fingerprinted BenchGuard exports | Reviewed arithmetic/model-export adapters and sample-level uncertainty |
 
 Fixtures are synthetic; tests are not model-quality or hardware benchmark results.
 See each package's README, ROADMAP and MIT LICENSE. Work developed with AI
