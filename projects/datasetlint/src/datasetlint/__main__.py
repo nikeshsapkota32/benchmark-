@@ -19,6 +19,8 @@ def main(argv=None):
                         help="text matching policy; IDs always match exactly (default: exact)")
     parser.add_argument("--max-findings", type=int, metavar="N",
                         help="retain at most N findings while scanning all records; 0 keeps only totals")
+    parser.add_argument("--summary", action="store_true",
+                        help="include full-scan counts for each duplicate/overlap finding category")
     parser.add_argument("--index-backend", choices=INDEX_BACKENDS, default="memory",
                         help="duplicate index storage; sqlite writes temporary dataset values to disk")
     args = parser.parse_args(argv)
@@ -36,12 +38,12 @@ def main(argv=None):
                 splits[name] = path
             report = inspect_jsonl(splits, id_field=args.id_field, text_field=args.text_field,
                                    text_policy=args.text_policy, max_findings=args.max_findings,
-                                   index_backend=args.index_backend)
+                                   index_backend=args.index_backend, include_summary=args.summary)
         else:
             dataset = _loads(args.dataset.read_text(encoding="utf-8"))
             report = inspect(dataset, id_field=args.id_field, text_field=args.text_field,
                              text_policy=args.text_policy, max_findings=args.max_findings,
-                             index_backend=args.index_backend)
+                             index_backend=args.index_backend, include_summary=args.summary)
     except (OSError, ValueError) as exc:
         print(f"datasetlint: {exc}", file=sys.stderr)
         return 2
