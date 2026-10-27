@@ -46,8 +46,10 @@ console scripts with `--help`, and reruns the unit and integration suites from
 an empty temporary working directory. Isolated Python mode and a cleaned child
 environment prevent `PYTHONPATH` or the current directory from supplying source
 packages. Editable-install CI remains in place as a separate development check.
-Four harness regression tests also check its isolation, environment, source-import
-and console-entry-point guards (`python -m unittest discover -s scripts -v`).
+It also checks each installed distribution's MIT license expression, LICENSE
+declaration and bundled license text against the source. Eight harness tests
+cover these license checks and the isolation, environment, source-import and
+console-entry-point guards (`python -m unittest discover -s scripts -v`).
 
 To reproduce on Linux/macOS from the repository root:
 
@@ -61,6 +63,8 @@ python -m venv "$check_dir/venv"
 "$check_dir/venv/bin/python" -I scripts/check_installed.py
 ```
 
+All four packages require setuptools 77.0.3 or newer to build their SPDX license
+metadata. The MIT terms and dependency-free core runtime are unchanged.
 Building may download build dependencies; installation and checks use only the
 built wheels and local synthetic fixtures. For an offline build with suitable
 build dependencies already installed, add `--no-build-isolation --no-index` to

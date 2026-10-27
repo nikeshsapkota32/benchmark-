@@ -18,6 +18,15 @@ PACKAGES = ("benchguard", "datasetlint", "edgebench", "visioneval")
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def check_license(name, installed, expected_text):
+    if installed.metadata.get("License-Expression") != "MIT":
+        raise RuntimeError(f"{name} is missing its MIT license expression")
+    if installed.metadata.get_all("License-File") != ["LICENSE"]:
+        raise RuntimeError(f"{name} is missing its unique LICENSE declaration")
+    if installed.read_text("licenses/LICENSE") != expected_text:
+        raise RuntimeError(f"{name} installed license differs from the source LICENSE")
+
+
 def main():
     if not sys.flags.isolated or sys.prefix == sys.base_prefix:
         raise RuntimeError("run with a fresh virtual environment's Python and -I")
@@ -33,7 +42,9 @@ def main():
                        if entry.group == "console_scripts" and entry.name == name]
         if len(entrypoints) != 1:
             raise RuntimeError(f"{name} is missing its unique console entry point")
-        print(f"{name} {installed.version}: installed import and entry point verified", flush=True)
+        project = ROOT if name == "benchguard" else ROOT / "projects" / name
+        check_license(name, installed, (project / "LICENSE").read_text(encoding="utf-8"))
+        print(f"{name} {installed.version}: installed import, entry point and license verified", flush=True)
 
     # Some existing tests spawn Python subprocesses without -I. Remove path
     # injection variables for those children as well, and use an empty cwd.
