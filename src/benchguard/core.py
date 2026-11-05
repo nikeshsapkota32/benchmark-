@@ -66,17 +66,18 @@ def validate(run):
 
 def _regressed(before, after, higher_is_better, limit):
     direction = 1 if higher_is_better else -1
-    degradation = (before - after) * direction
-    try:
-        if math.isfinite(degradation):
-            return degradation > limit and not math.isclose(
-                degradation, limit, rel_tol=1e-12, abs_tol=1e-15
-            )
-    except OverflowError:
-        pass  # A difference of valid integers may not fit in a float.
+    if isinstance(before, int) == isinstance(after, int):
+        degradation = (before - after) * direction
+        try:
+            if math.isfinite(degradation):
+                return degradation > limit and not math.isclose(
+                    degradation, limit, rel_tol=1e-12, abs_tol=1e-15
+                )
+        except OverflowError:
+            pass  # A difference of valid integers may not fit in a float.
 
-    # Recompute from the original finite inputs, not an overflowed float.
-    # Use the same closeness rule without converting the difference to float.
+    # Mixed subtraction can round the integer before subtracting, losing even
+    # a one-unit difference. Use the original values here and for overflow.
     degradation = (Fraction(before) - Fraction(after)) * direction
     limit = Fraction(limit)
     margin = max(Fraction(1e-12) * max(abs(degradation), abs(limit)),

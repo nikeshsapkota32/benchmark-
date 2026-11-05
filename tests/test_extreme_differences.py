@@ -30,6 +30,23 @@ class ExtremeDifferenceTests(unittest.TestCase):
                         row = compare(baseline, candidate, tolerance=1e308)[0]
                         self.assertEqual(row.status, "pass" if improving else "regression")
 
+    def test_mixed_scores_keep_the_integer_units_at_the_float_precision_limit(self):
+        anchor = 2**53
+        for higher in (True, False):
+            for before, after, loss in (
+                (anchor + 1, float(anchor), 1),
+                (float(anchor), anchor + 1, -1),
+                (anchor + 3, float(anchor), 3),
+                (float(anchor), anchor + 3, -3),
+            ):
+                baseline, candidate = run(value=before), run(value=after)
+                for item in (baseline, candidate):
+                    item["results"][0]["higher_is_better"] = higher
+                for limit in (0, abs(loss)):
+                    with self.subTest(before=before, after=after, higher=higher, limit=limit):
+                        expected = "regression" if (loss if higher else -loss) > limit else "pass"
+                        self.assertEqual(compare(baseline, candidate, limit)[0].status, expected)
+
     def test_overflowing_difference_can_be_close_to_tolerance(self):
         maximum = sys.float_info.max
         for integer in (False, True):
