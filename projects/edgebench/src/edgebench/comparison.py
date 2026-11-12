@@ -1,7 +1,17 @@
 """Describe saved latency changes only after checking measurement metadata."""
 
+from fractions import Fraction
+
 from .compatibility import check_compatibility
 from .report import summarize
+
+
+def _delta(candidate, baseline):
+    if type(candidate) is type(baseline):
+        return candidate - baseline
+    # Float subtraction would round the integer before taking the difference.
+    difference = Fraction(candidate) - Fraction(baseline)
+    return difference.numerator if difference.denominator == 1 else float(difference)
 
 
 def compare_reports(baseline, candidate, *, required_fields=(), vary_fields=()):
@@ -17,7 +27,7 @@ def compare_reports(baseline, candidate, *, required_fields=(), vary_fields=()):
     before, after = summarize(baseline["durations"]), summarize(candidate["durations"])
     result["metrics"] = [
         {"metric": name, "baseline": before[name], "candidate": after[name],
-         "delta_ms": after[name] - before[name]}
+         "delta_ms": _delta(after[name], before[name])}
         for name in ("min", "max", "mean", "median", "p90", "p95")
     ]
     return result

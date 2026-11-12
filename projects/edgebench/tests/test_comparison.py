@@ -46,6 +46,14 @@ class ComparisonTests(unittest.TestCase):
                 self.assertTrue(all(row["delta_ms"] == right - left for row in result["metrics"]))
                 json.dumps(result, allow_nan=False)
 
+    def test_mixed_numeric_metrics_preserve_one_millisecond_deltas(self):
+        smaller = float(2**53)
+        larger = 2**53 + 1
+        for left, right, delta in ((smaller, larger, 1), (larger, smaller, -1)):
+            with self.subTest(delta=delta):
+                metrics = compare_reports(timing([left]), timing([right]))["metrics"]
+                self.assertEqual([row["delta_ms"] for row in metrics], [delta] * 6)
+
     def test_rounding_in_saved_summary_does_not_create_a_false_delta(self):
         before, after = timing([1, 2]), timing([1, 2])
         after["summary"]["mean"] += 1e-13
