@@ -24,6 +24,12 @@ def _ground_truth_sha256(data):
 def to_benchguard(data, *, response_policy="strict"):
     """Score all records, then export aggregate metrics and raw stable IDs."""
     report = evaluate(data, response_policy=response_policy)
+    for index, row in enumerate(data["records"]):
+        # JSON surrogate escapes can collapse two Python code points into one.
+        try:
+            row["id"].encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValueError(f"record {index}: export id contains a surrogate code point") from None
     protocol = json.dumps({"export": "visioneval-benchguard-v2",
                            "kind": report["kind"], "protocol": report["protocol"],
                            "response_policy": response_policy,

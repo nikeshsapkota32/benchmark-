@@ -37,6 +37,19 @@ class BenchGuardExportTests(unittest.TestCase):
                                               ("character_error_rate", 0.25, False))])
         self.assertNotIn("007", json.dumps(report))
 
+    def test_export_ids_remain_distinct_after_json_round_trip(self):
+        data = fixture()
+        symbol = chr(0x1F600)
+        data["records"][0]["id"] = symbol
+        for invalid in (chr(0xD83D) + chr(0xDE00), chr(0xD83D), chr(0xDE00)):
+            data["records"][1]["id"] = invalid
+            with self.assertRaisesRegex(ValueError, "record 1: export id contains a surrogate"):
+                to_benchguard(data)
+        data["records"][1]["id"] = symbol + "b"
+        saved = json.loads(json.dumps(to_benchguard(data)))
+        for metric in saved["results"]:
+            self.assertEqual(metric["sample_ids"], [symbol, symbol + "b"])
+
     def test_arithmetic_exports_only_exact_match_and_keeps_zero(self):
         data = fixture("arithmetic")
         data["records"][1]["prediction"] = 0
