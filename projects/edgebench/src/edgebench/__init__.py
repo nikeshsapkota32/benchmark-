@@ -1,5 +1,6 @@
 """Measure a synchronous callable on the current host."""
 
+from concurrent.futures import Future
 import inspect
 import platform
 import time
@@ -20,6 +21,8 @@ def _validate_sync_callable(callback, name):
 
 def _call_sync(callback, name):
     result = callback()
+    if name == "synchronize" and isinstance(result, Future):
+        raise ValueError("synchronize returned a Future; wait for completion inside the callback")
     if inspect.isgenerator(result):
         raise ValueError(f"{name} returned a generator; consume it inside a synchronous callback")
     if inspect.isawaitable(result) or inspect.isasyncgen(result):
