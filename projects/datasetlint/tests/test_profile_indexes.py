@@ -133,6 +133,28 @@ class IndexProfilingTests(unittest.TestCase):
         self.assertEqual((code, out.getvalue()), (2, ""))
         self.assertNotIn("private detail", err.getvalue())
 
+    @unittest.skipUnless(sys.platform == "linux", "Linux profiling workers")
+    def test_same_edits_before_all_workers_do_not_pass_as_generated_input(self):
+        run = subprocess.run
+        changed = False
+
+        def edit_before_scan(command, **kwargs):
+            nonlocal changed
+            if not changed:
+                for filename in command[-2:]:
+                    path = Path(filename)
+                    path.write_bytes(path.read_bytes().replace(b"synthetic-", b"alternate-"))
+                changed = True
+            return run(command, **kwargs)
+
+        out, err = io.StringIO(), io.StringIO()
+        with patch.object(profiler.subprocess, "run", side_effect=edit_before_scan), \
+                redirect_stdout(out), redirect_stderr(err):
+            code = profiler.main(["--records", "10", "--trials", "1"])
+        self.assertTrue(changed)
+        self.assertEqual((code, out.getvalue()), (2, ""))
+        self.assertIn("generated input", err.getvalue())
+
     def test_report_mismatch_discards_resource_results(self):
         def completed(report):
             return subprocess.CompletedProcess([], 0, json.dumps(

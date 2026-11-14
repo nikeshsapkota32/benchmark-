@@ -179,6 +179,10 @@ Invalid parameters, worker failures, timeouts or unequal reports exit 2. Each
 worker has a 300-second timeout. Smaller defaults use 10,000 train records.
 
 Every new trial records its own `script_sha256` and `implementation_sha256`.
+The generator hashes each split as it writes the JSONL records, outside the
+measured scans. Even if all workers read identical files, their scan hashes
+must match the bytes generated for this run or the profile is discarded.
+
 Each worker hashes its script and the three imported DatasetLint source files
 before and after the scan. The parent samples its sources before and after the
 profile, and accepts a trial only if all worker hashes match the initial parent
