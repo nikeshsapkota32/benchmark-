@@ -43,6 +43,9 @@ awaited or cancelled. The caller remains responsible for outstanding work and
 cleanup. A late failure cannot undo earlier calls or their side effects. If a
 workload uses asynchronous device execution, provide a **synchronous blocking**
 completion callback; returning an awaitable from that callback is not sufficient.
+A synchronization callback that returns a `concurrent.futures.Future` is also
+rejected. Call `future.result()` inside the callback to wait and propagate worker
+errors. EdgeBench does not wait on or cancel the future for you.
 Ordinary return values are still discarded. These checks cannot detect every
 lazy result or hidden device queue, so completion remains the caller's contract.
 
