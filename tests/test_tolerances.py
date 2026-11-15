@@ -35,6 +35,15 @@ class MetricToleranceTests(unittest.TestCase):
         self.assertTrue(failed(compare(before, mixed_run(0.78, 105), metric_tolerances=limits)))
         self.assertTrue(failed(compare(before, mixed_run(0.79, 106), metric_tolerances=limits)))
 
+    def test_distinct_policy_limits_remain_visible_in_result_reasons(self):
+        before, after = mixed_run(2), mixed_run(0.9999997)
+        for limit, status in ((1.0000002, "regression"), (1.0000004, "pass"),
+                              (9007199254740993, "pass")):
+            with self.subTest(limit=limit):
+                row = compare(before, after, metric_tolerances={"accuracy": limit})[0]
+                self.assertEqual(row.status, status)
+                self.assertEqual(json.loads(row.reason.split(": ")[1]), limit)
+
     def test_unlisted_metric_uses_default(self):
         candidate = mixed_run(0.79, 105)
         self.assertFalse(failed(compare(mixed_run(), candidate, 0.01,
