@@ -1,4 +1,5 @@
 from contextlib import redirect_stderr, redirect_stdout
+import hashlib
 import importlib.util
 import io
 import json
@@ -133,12 +134,32 @@ class IndexProfilingTests(unittest.TestCase):
         self.assertEqual((code, out.getvalue()), (2, ""))
         self.assertNotIn("private detail", err.getvalue())
 
+    @unittest.skipUnless(sys.platform == "linux", "Linux profiling workers")
+    def test_same_edits_before_all_workers_do_not_pass_as_generated_input(self):
+        run = subprocess.run
+        def edit_before_scan(command, **kwargs):
+            for filename in command[-2:]:
+                path = Path(filename)
+                path.write_bytes(path.read_bytes().replace(b"synthetic-", b"alternate-"))
+            return run(command, **kwargs)
+
+        out, err = io.StringIO(), io.StringIO()
+        with patch.object(profiler.subprocess, "run", side_effect=edit_before_scan) as worker, \
+                redirect_stdout(out), redirect_stderr(err):
+            code = profiler.main(["--records", "10", "--trials", "3"])
+        worker.assert_called_once()
+        self.assertEqual((code, out.getvalue()), (2, ""))
+        self.assertIn("generated input", err.getvalue())
+
     def test_report_mismatch_discards_resource_results(self):
-        def completed(report):
+        def completed(command, **kwargs):
+            hashes = {name: hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                      for name, path in zip(("train", "test"), command[-2:])}
+            report = {"source_sha256": hashes, "different_field": command[3]}
             return subprocess.CompletedProcess([], 0, json.dumps(
                 {"report": report, **profiler.source_fingerprints()}), "")
         with patch.object(profiler.sys, "platform", "linux"), patch.object(
-                profiler.subprocess, "run", side_effect=[completed({"a": 1}), completed({"a": 2})]):
+                profiler.subprocess, "run", side_effect=completed):
             with self.assertRaisesRegex(ValueError, "backend reports differ"):
                 profiler.profile(10, 32, 1)
 

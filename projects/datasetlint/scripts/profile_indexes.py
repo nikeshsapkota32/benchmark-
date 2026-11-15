@@ -52,7 +52,7 @@ def storage_snapshot(connection):
             "allocated_bytes": None if any(value is None for value in allocated) else sum(allocated)}
 
 
-def write_synthetic(directory, records, text_bytes):
+def write_synthetic(directory, records, text_bytes, *, digests=None):
     """Stream unique train records and every tenth train record into a test split."""
     if type(records) is not int or records < 10:
         raise ValueError("records must be an integer >= 10")
@@ -66,8 +66,12 @@ def write_synthetic(directory, records, text_bytes):
             row = {"id": f"synthetic-{index}", "text": text}
             raw = (json.dumps(row, separators=(",", ":")) + "\n").encode("ascii")
             train.write(raw)
+            if digests is not None:
+                digests["train"].update(raw)
             if index % 10 == 0:
                 test.write(raw)
+                if digests is not None:
+                    digests["test"].update(raw)
     return paths
 
 
@@ -115,7 +119,9 @@ def profile(records=10000, text_bytes=512, trials=3):
     sources = source_fingerprints()
     runs, reference = [], None
     with tempfile.TemporaryDirectory(prefix="datasetlint-profile-") as directory:
-        paths = write_synthetic(directory, records, text_bytes)
+        digests = {name: hashlib.sha256() for name in ("train", "test")}
+        paths = write_synthetic(directory, records, text_bytes, digests=digests)
+        expected_hashes = {name: digest.hexdigest() for name, digest in digests.items()}
         input_bytes = {name: path.stat().st_size for name, path in paths.items()}
         for trial in range(trials):
             # Alternate first backend; OS caches are intentionally not flushed.
@@ -130,6 +136,8 @@ def profile(records=10000, text_bytes=512, trials=3):
                 if any(result.get(key) != value for key, value in sources.items()):
                     raise ValueError("worker sources differ from parent; resource results discarded")
                 report = result.pop("report")
+                if report.get("source_sha256") != expected_hashes:
+                    raise ValueError("worker hashes differ from generated input; resource results discarded")
                 if reference is not None and report != reference:
                     raise ValueError("backend reports differ; resource results discarded")
                 reference = report
