@@ -21,15 +21,21 @@ def _ground_truth_sha256(data):
     return hashlib.sha256(payload.encode("ascii")).hexdigest()
 
 
+def _check_export_text(value, field):
+    # JSON surrogate escapes can collapse two Python code points into one.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError(f"{field} contains a surrogate code point") from None
+
+
 def to_benchguard(data, *, response_policy="strict"):
     """Score all records, then export aggregate metrics and raw stable IDs."""
     report = evaluate(data, response_policy=response_policy)
+    for field in ("model", "dataset_revision", "protocol"):
+        _check_export_text(report[field], f"export {field}")
     for index, row in enumerate(data["records"]):
-        # JSON surrogate escapes can collapse two Python code points into one.
-        try:
-            row["id"].encode("utf-8")
-        except UnicodeEncodeError:
-            raise ValueError(f"record {index}: export id contains a surrogate code point") from None
+        _check_export_text(row["id"], f"record {index}: export id")
     protocol = json.dumps({"export": "visioneval-benchguard-v2",
                            "kind": report["kind"], "protocol": report["protocol"],
                            "response_policy": response_policy,

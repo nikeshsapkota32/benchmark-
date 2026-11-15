@@ -50,6 +50,19 @@ class BenchGuardExportTests(unittest.TestCase):
         for metric in saved["results"]:
             self.assertEqual(metric["sample_ids"], [symbol, symbol + "b"])
 
+    def test_run_labels_round_trip_without_surrogate_aliases(self):
+        symbol = chr(0x1F600)
+        for field in ("model", "dataset_revision", "protocol"):
+            with self.subTest(field=field):
+                data = fixture()
+                data[field] = symbol
+                saved = json.loads(json.dumps(to_benchguard(data)))
+                value = json.loads(saved["protocol"])["protocol"] if field == "protocol" else saved[field]
+                self.assertEqual(value, symbol)
+                data[field] = chr(0xD83D) + chr(0xDE00)
+                with self.assertRaisesRegex(ValueError, f"^export {field} contains a surrogate code point$"):
+                    to_benchguard(data)
+
     def test_arithmetic_exports_only_exact_match_and_keeps_zero(self):
         data = fixture("arithmetic")
         data["records"][1]["prediction"] = 0
