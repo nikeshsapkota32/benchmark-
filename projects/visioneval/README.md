@@ -294,7 +294,10 @@ it also pins the ordered operands and operator, so different problems with the
 same answer are not treated as the same evaluation set. Input record ordering,
 model name, predictions and extra record fields do not affect the fingerprint.
 IDs and digit targets are preserved exactly, including Unicode IDs and leading
-zeros. No Unicode normalization is applied.
+zeros. No Unicode normalization is applied. Export rejects surrogate code points in IDs and in the
+model, dataset revision and protocol labels: a Python string containing two surrogate code points can otherwise
+serialize to the same JSON as a single supplementary character. IDs and labels containing
+the actual character (for example, an emoji) are supported.
 
 The SHA-256 input is ASCII-encoded, key-sorted compact JSON (separators `,` and
 `:`; `ensure_ascii=True`) containing `schema_version: 1`, `kind`, and `records`
