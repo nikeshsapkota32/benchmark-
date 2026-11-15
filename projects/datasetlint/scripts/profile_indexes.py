@@ -136,13 +136,13 @@ def profile(records=10000, text_bytes=512, trials=3):
                 if any(result.get(key) != value for key, value in sources.items()):
                     raise ValueError("worker sources differ from parent; resource results discarded")
                 report = result.pop("report")
+                if report.get("source_sha256") != expected_hashes:
+                    raise ValueError("worker hashes differ from generated input; resource results discarded")
                 if reference is not None and report != reference:
                     raise ValueError("backend reports differ; resource results discarded")
                 reference = report
                 result["trial"] = trial + 1
                 runs.append(result)
-        if reference.get("source_sha256") != expected_hashes:
-            raise ValueError("worker hashes differ from generated input; resource results discarded")
         expected_test = (records + 9) // 10
         if (reference["counts"] != {"train": records, "test": expected_test}
                 or reference["total_findings"] != expected_test * 2 or reference["passed"]
