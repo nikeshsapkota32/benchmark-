@@ -149,7 +149,7 @@ def compare(baseline, candidate, tolerance=0.0, *, metric_tolerances=None, metri
             limit = overrides.get(metric, tolerance)
             regressed = _regressed(a["value"], b["value"], a["higher_is_better"], limit)
             status = "regression" if regressed else "pass"
-            reason = f"allowed absolute degradation: {limit:g}"
+            reason = f"allowed absolute degradation: {limit}"
         rows.append(Result(task, metric, a["value"] if a else None,
                            b["value"] if b else None, status, reason,
                            a_fingerprint, b_fingerprint))
