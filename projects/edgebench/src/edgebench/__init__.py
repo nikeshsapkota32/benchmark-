@@ -19,9 +19,11 @@ def _validate_sync_callable(callback, name):
             raise ValueError(f"{name} must be synchronous; async callbacks are unsupported")
 
 
-def _call_sync(callback, name):
+def _call_sync(callback, name, *, allow_future=False):
     result = callback()
-    if name == "synchronize" and isinstance(result, Future):
+    if isinstance(result, Future) and not allow_future:
+        if name == "operation":
+            raise ValueError("operation returned a Future; wait inside the operation or supply a blocking synchronizer")
         raise ValueError("synchronize returned a Future; wait for completion inside the callback")
     if inspect.isgenerator(result):
         raise ValueError(f"{name} returned a generator; consume it inside a synchronous callback")
@@ -50,12 +52,12 @@ def benchmark(operation, *, workload, warmups=3, repeats=10, synchronize=None,
     complete = synchronize if synchronize is not None else lambda: None
     _call_sync(complete, "synchronize")
     for _ in range(warmups):
-        _call_sync(operation, "operation")
+        _call_sync(operation, "operation", allow_future=synchronize is not None)
         _call_sync(complete, "synchronize")
     durations = []
     for _ in range(repeats):
         start = time.perf_counter_ns()
-        _call_sync(operation, "operation")
+        _call_sync(operation, "operation", allow_future=synchronize is not None)
         _call_sync(complete, "synchronize")
         duration = time.perf_counter_ns() - start
         if duration < 0:
