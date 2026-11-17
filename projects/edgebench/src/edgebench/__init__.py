@@ -1,5 +1,6 @@
 """Measure a synchronous callable on the current host."""
 
+from concurrent.futures import Future
 import inspect
 import platform
 import time
@@ -18,8 +19,14 @@ def _validate_sync_callable(callback, name):
             raise ValueError(f"{name} must be synchronous; async callbacks are unsupported")
 
 
-def _call_sync(callback, name):
+def _call_sync(callback, name, *, allow_future=False):
     result = callback()
+    if isinstance(result, Future):
+        if allow_future:
+            return result
+        if name == "operation":
+            raise ValueError("operation returned a Future; wait inside the operation or supply a blocking synchronizer")
+        raise ValueError("synchronize returned a Future; wait for completion inside the callback")
     if inspect.isgenerator(result):
         raise ValueError(f"{name} returned a generator; consume it inside a synchronous callback")
     if inspect.isawaitable(result) or inspect.isasyncgen(result):
@@ -45,15 +52,20 @@ def benchmark(operation, *, workload, warmups=3, repeats=10, synchronize=None,
         raise ValueError("warmups must be a nonnegative integer and repeats a positive integer")
     recorded_configuration = snapshot(configuration)
     complete = synchronize if synchronize is not None else lambda: None
+
+    def run_completed():
+        future = _call_sync(operation, "operation", allow_future=synchronize is not None)
+        _call_sync(complete, "synchronize")
+        if future is not None and not future.done():
+            raise ValueError("operation Future is still pending after synchronize returned")
+
     _call_sync(complete, "synchronize")
     for _ in range(warmups):
-        _call_sync(operation, "operation")
-        _call_sync(complete, "synchronize")
+        run_completed()
     durations = []
     for _ in range(repeats):
         start = time.perf_counter_ns()
-        _call_sync(operation, "operation")
-        _call_sync(complete, "synchronize")
+        run_completed()
         duration = time.perf_counter_ns() - start
         if duration < 0:
             raise ValueError("monotonic clock moved backwards")

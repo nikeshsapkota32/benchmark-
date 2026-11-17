@@ -1,3 +1,4 @@
+from concurrent.futures import Future
 from functools import partial
 import inspect
 import unittest
@@ -90,6 +91,62 @@ class SyncContractTests(unittest.TestCase):
             self.assertEqual(operation.call_count, expected_operations)
             self.assertEqual(calls, failure_call)
             self.assertEqual(inspect.getcoroutinestate(created[0]), inspect.CORO_CLOSED)
+
+    def test_future_is_not_a_blocking_synchronizer(self):
+        for valid_calls in (0, 1, 2):
+            pending = Future()
+            operation = Mock()
+            synchronize = Mock(side_effect=[None] * valid_calls + [pending])
+            with self.subTest(valid_calls=valid_calls), self.assertRaisesRegex(
+                    ValueError, "synchronize returned a Future"):
+                benchmark(operation, workload="synthetic", warmups=1, repeats=1,
+                          synchronize=synchronize)
+            self.assertEqual(operation.call_count, valid_calls)
+            self.assertFalse(pending.done())
+
+    def test_operation_future_requires_explicit_completion(self):
+        for warmups in (0, 2):
+            pending = Future()
+            operation = Mock(side_effect=[None, pending])
+            with self.subTest(warmups=warmups), self.assertRaisesRegex(ValueError, "operation returned a Future"):
+                benchmark(operation, workload="synthetic", warmups=warmups, repeats=2)
+            self.assertEqual(operation.call_count, 2)
+            self.assertFalse(pending.done())
+
+    def test_synchronizer_leaving_operation_future_pending_aborts_run(self):
+        # Encounter the pending Future during warmup or after a completed sample.
+        for warmups in (2, 0):
+            pending = Future()
+            operation = Mock(side_effect=[None, pending, None])
+            with self.subTest(warmups=warmups), self.assertRaisesRegex(ValueError, "still pending"):
+                benchmark(operation, workload="synthetic", synchronize=lambda: None,
+                          warmups=warmups, repeats=3)
+            self.assertEqual(operation.call_count, 2)
+            self.assertFalse(pending.done())
+
+    def test_future_operation_can_use_a_blocking_synchronizer(self):
+        pending = []
+        def submit():
+            future = Future()
+            pending.append(future)
+            return future
+
+        def complete():
+            if pending:
+                pending[-1].set_result(None)
+                pending[-1].result()
+
+        report = benchmark(submit, workload="synthetic", synchronize=complete, warmups=1, repeats=2)
+        self.assertEqual(len(report["durations"]), 2)
+        self.assertEqual(len(pending), 3)
+        self.assertTrue(all(f.done() for f in pending))
+
+    def test_synchronizer_can_explicitly_wait_for_a_future(self):
+        completed = Future()
+        completed.set_result(None)
+        report = benchmark(lambda: None, workload="synthetic", warmups=0, repeats=1,
+                           synchronize=completed.result)
+        self.assertEqual(len(report["durations"]), 1)
 
     def test_late_awaitable_does_not_produce_a_partial_report(self):
         events = []
