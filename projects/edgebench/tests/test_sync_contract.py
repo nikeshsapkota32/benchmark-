@@ -113,6 +113,17 @@ class SyncContractTests(unittest.TestCase):
             self.assertEqual(operation.call_count, 2)
             self.assertFalse(pending.done())
 
+    def test_synchronizer_leaving_operation_future_pending_aborts_run(self):
+        # Encounter the pending Future during warmup or after a completed sample.
+        for warmups in (2, 0):
+            pending = Future()
+            operation = Mock(side_effect=[None, pending, None])
+            with self.subTest(warmups=warmups), self.assertRaisesRegex(ValueError, "still pending"):
+                benchmark(operation, workload="synthetic", synchronize=lambda: None,
+                          warmups=warmups, repeats=3)
+            self.assertEqual(operation.call_count, 2)
+            self.assertFalse(pending.done())
+
     def test_future_operation_can_use_a_blocking_synchronizer(self):
         pending = []
         def submit():

@@ -47,6 +47,9 @@ A synchronization callback that returns a `concurrent.futures.Future` is also
 rejected. Call `future.result()` inside the callback to wait and propagate worker
 errors. EdgeBench does not wait on or cancel the future for you.
 An operation returning a Future also needs an explicit blocking synchronizer.
+If that Future is still pending when the synchronizer returns, the run stops
+without a report. The synchronizer must propagate worker errors (for example,
+by calling `future.result()`); a finished Future alone does not imply success.
 Alternatively, call `future.result()` inside the operation before returning.
 Ordinary return values are still discarded. These checks cannot detect every
 lazy result or hidden device queue, so completion remains the caller's contract.
